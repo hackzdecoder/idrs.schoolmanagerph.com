@@ -5,10 +5,6 @@ import {
   Button,
   Checkbox,
   Chip,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   Divider,
   FormControl,
   FormControlLabel,
@@ -26,7 +22,7 @@ import Grid from '@mui/material/Grid';
 import useRouteApiSetup from 'hooks/useRouteApiSetup';
 import Swal from 'sweetalert2';
 import IconifyIcon from 'components/base/IconifyIcon';
-import { OnLoader } from 'components/dialogs/Dialog';
+import { Dialog, OnLoader } from 'components/dialogs/Dialog';
 import PageLoader from 'components/loading/PageLoader';
 
 interface StudentProfileData {
@@ -60,6 +56,8 @@ interface StudentProfileData {
   parent_first_name?: string | null;
   parent_surname?: string | null;
   parent_email?: string | null;
+  sms_app_credentials?: string | null;
+  sms_app_created_at?: string | null;
 }
 
 interface UserData {
@@ -88,8 +86,7 @@ const formatMiddleInitialOnBlur = (value: string): string => {
   return formatted;
 };
 
-// ✅ FIX 1: Generate Name to Appear on ID Card - preserves middle initial exactly as encoded
-// If middle initial has period(s), keep as is. If no period, add one at the end.
+// Generate Name to Appear on ID Card - preserves middle initial exactly as encoded
 const generateNameToAppearOnId = (
   firstName: string,
   middleInitial: string,
@@ -101,19 +98,15 @@ const generateNameToAppearOnId = (
 
   if (!first && !last) return '';
 
-  // Format: Last Name, First Name MI.
   let result = last;
   if (first) {
     result += result ? `, ${first}` : first;
   }
   if (middle) {
-    // ✅ Check if middle initial already has a period
     if (middle.includes('.')) {
-      // Already has period(s) - use as is (but remove trailing period for consistency, then add one)
       const cleanMiddle = middle.replace(/\.+$/, '');
       result += ` ${cleanMiddle}.`;
     } else {
-      // No period - add one at the end
       result += ` ${middle}.`;
     }
   }
@@ -162,6 +155,7 @@ const ProfileContent = () => {
   const [isApproved, setIsApproved] = useState(false);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [isCheckboxChecked, setIsCheckboxChecked] = useState(false);
+  const [smsCredentialsExist, setSmsCredentialsExist] = useState(false);
 
   // State for password visibility toggle
   const [showPassword, setShowPassword] = useState(false);
@@ -202,6 +196,11 @@ const ProfileContent = () => {
 
         const parsedUser = JSON.parse(userStr);
 
+        // Check SMS credentials from stored user data
+        if (parsedUser.sms_credentials_exist !== undefined) {
+          setSmsCredentialsExist(parsedUser.sms_credentials_exist);
+        }
+
         const roleResponse = await get<{
           success: boolean;
           role: string;
@@ -229,6 +228,11 @@ const ProfileContent = () => {
 
               if (profileResponse.data.id_info_status?.toLowerCase() === 'approved') {
                 setIsApproved(true);
+              }
+
+              // Check sms_app_credentials from profile data
+              if (profileResponse.data.sms_app_credentials === 'yes') {
+                setSmsCredentialsExist(true);
               }
 
               let formattedBirthDate = '';
@@ -351,7 +355,6 @@ const ProfileContent = () => {
       setEditableData((prev) => {
         const newData = { ...prev, middle_initial: formatted };
 
-        // Also update name to appear on ID
         const generatedName = generateNameToAppearOnId(prev.first_name, formatted, prev.surname);
         newData.name_to_appear_on_id = generatedName;
 
@@ -381,11 +384,17 @@ const ProfileContent = () => {
       { field: 'residential_address', message: 'Residential Address is required' },
       { field: 'emergency_contact_person', message: 'Emergency Contact Person is required' },
       { field: 'emergency_contact_number', message: 'Emergency Contact Number is required' },
-      { field: 'parent_first_name', message: 'Parent/Guardian First Name is required' },
-      { field: 'parent_surname', message: 'Parent/Guardian Last Name is required' },
-      { field: 'parent_email', message: 'Parent/Guardian Email Address is required' },
-      { field: 'password', message: 'Mobile App / Web App Password is required' },
     ];
+
+    // Only require parent/guardian fields if SMS credentials don't exist
+    if (!smsCredentialsExist) {
+      requiredFields.push(
+        { field: 'parent_first_name', message: 'Parent/Guardian First Name is required' },
+        { field: 'parent_surname', message: 'Parent/Guardian Last Name is required' },
+        { field: 'parent_email', message: 'Parent/Guardian Email Address is required' },
+        { field: 'password', message: 'Mobile App / Web App Password is required' },
+      );
+    }
 
     for (const { field, message } of requiredFields) {
       if (!editableData[field as keyof typeof editableData]) {
@@ -399,16 +408,18 @@ const ProfileContent = () => {
       }
     }
 
-    // Validate password strength before submitting
-    const passwordValidation = validatePasswordStrength(editableData.password);
-    if (!passwordValidation.isValid) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Weak Password',
-        text: passwordValidation.message,
-        confirmButtonColor: '#2563eb',
-      });
-      return;
+    // Only validate password strength if password is provided and credentials don't exist
+    if (!smsCredentialsExist && editableData.password) {
+      const passwordValidation = validatePasswordStrength(editableData.password);
+      if (!passwordValidation.isValid) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Weak Password',
+          text: passwordValidation.message,
+          confirmButtonColor: '#2563eb',
+        });
+        return;
+      }
     }
 
     if (!isValidPhoneNumber(editableData.emergency_contact_number)) {
@@ -421,15 +432,17 @@ const ProfileContent = () => {
       return;
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (editableData.parent_email && !emailRegex.test(editableData.parent_email)) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'Please enter a valid Parent/Guardian Email Address',
-        confirmButtonColor: '#2563eb',
-      });
-      return;
+    if (editableData.parent_email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(editableData.parent_email)) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Please enter a valid Parent/Guardian Email Address',
+          confirmButtonColor: '#2563eb',
+        });
+        return;
+      }
     }
 
     setConfirmModalOpen(true);
@@ -448,7 +461,7 @@ const ProfileContent = () => {
       setUpdating(true);
       setConfirmModalOpen(false);
 
-      const updateData = {
+      const updateData: any = {
         first_name: editableData.first_name,
         middle_initial: editableData.middle_initial || '',
         surname: editableData.surname,
@@ -459,14 +472,23 @@ const ProfileContent = () => {
         gender: editableData.gender,
         emergency_contact_person: editableData.emergency_contact_person,
         emergency_contact_number: editableData.emergency_contact_number,
-        parent_first_name: editableData.parent_first_name || '',
-        parent_surname: editableData.parent_surname || '',
-        parent_email: editableData.parent_email || '',
         name_to_appear_on_id: editableData.name_to_appear_on_id,
         esc_voucher_recipient: editableData.esc_voucher_recipient,
         esc_number: editableData.esc_number || '',
-        password: editableData.password,
       };
+
+      // Only include parent fields and password if SMS credentials don't exist
+      if (!smsCredentialsExist) {
+        updateData.parent_first_name = editableData.parent_first_name || '';
+        updateData.parent_surname = editableData.parent_surname || '';
+        updateData.parent_email = editableData.parent_email || '';
+        updateData.password = editableData.password;
+      } else {
+        if (editableData.parent_first_name)
+          updateData.parent_first_name = editableData.parent_first_name;
+        if (editableData.parent_surname) updateData.parent_surname = editableData.parent_surname;
+        if (editableData.parent_email) updateData.parent_email = editableData.parent_email;
+      }
 
       const response = await post<{
         success: boolean;
@@ -523,6 +545,7 @@ const ProfileContent = () => {
 
   const isRegistrationApproved =
     isApproved || profileData.id_info_status?.toLowerCase() === 'approved';
+  const isSmsCredentialsDisabled = smsCredentialsExist || isRegistrationApproved;
 
   return (
     <Box sx={{ p: 3 }}>
@@ -756,16 +779,19 @@ const ProfileContent = () => {
                 placeholder="11 digits only (e.g., 09123456789)"
                 inputProps={{ inputMode: 'numeric', maxLength: 11 }}
                 required
-                disabled={isRegistrationApproved}
+                disabled={isRegistrationApproved || isSmsCredentialsDisabled}
                 helperText={
-                  editableData.emergency_contact_number &&
-                  !isValidPhoneNumber(editableData.emergency_contact_number)
-                    ? 'Must be exactly 11 digits'
-                    : 'Enter exactly 11 digits (0-9)'
+                  isSmsCredentialsDisabled
+                    ? 'This mobile number is already registered in the system'
+                    : editableData.emergency_contact_number &&
+                        !isValidPhoneNumber(editableData.emergency_contact_number)
+                      ? 'Must be exactly 11 digits'
+                      : 'Enter exactly 11 digits (0-9)'
                 }
                 error={
                   !!editableData.emergency_contact_number &&
-                  !isValidPhoneNumber(editableData.emergency_contact_number)
+                  !isValidPhoneNumber(editableData.emergency_contact_number) &&
+                  !isSmsCredentialsDisabled
                 }
               />
             </Grid>
@@ -777,6 +803,12 @@ const ProfileContent = () => {
               <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2563eb', mb: 2 }}>
                 C. Mobile App / Web App Registration
               </Typography>
+              {isSmsCredentialsDisabled && (
+                <Typography variant="caption" sx={{ color: '#10b981', display: 'block', mb: 2 }}>
+                  ✓ Mobile app credentials already exist for this number. Registration details are
+                  pre-filled.
+                </Typography>
+              )}
             </Grid>
 
             <Grid size={{ xs: 12, md: 6 }}>
@@ -786,8 +818,8 @@ const ProfileContent = () => {
                 label="Parent/Guardian First Name"
                 value={editableData.parent_first_name}
                 onChange={(e) => handleFieldChange('parent_first_name', e.target.value)}
-                required
-                disabled={isRegistrationApproved}
+                required={!isSmsCredentialsDisabled}
+                disabled={isRegistrationApproved || isSmsCredentialsDisabled}
               />
             </Grid>
 
@@ -798,8 +830,8 @@ const ProfileContent = () => {
                 label="Parent/Guardian Last Name"
                 value={editableData.parent_surname}
                 onChange={(e) => handleFieldChange('parent_surname', e.target.value)}
-                required
-                disabled={isRegistrationApproved}
+                required={!isSmsCredentialsDisabled}
+                disabled={isRegistrationApproved || isSmsCredentialsDisabled}
               />
             </Grid>
 
@@ -811,8 +843,8 @@ const ProfileContent = () => {
                 type="email"
                 value={editableData.parent_email}
                 onChange={(e) => handleFieldChange('parent_email', e.target.value)}
-                required
-                disabled={isRegistrationApproved}
+                required={!isSmsCredentialsDisabled}
+                disabled={isRegistrationApproved || isSmsCredentialsDisabled}
               />
             </Grid>
 
@@ -824,17 +856,23 @@ const ProfileContent = () => {
                 type={showPassword ? 'text' : 'password'}
                 value={editableData.password}
                 onChange={(e) => handleFieldChange('password', e.target.value)}
-                placeholder="Enter password for mobile app access"
-                required
-                disabled={isRegistrationApproved}
-                error={!!passwordError}
+                placeholder={
+                  isSmsCredentialsDisabled
+                    ? 'Already registered'
+                    : 'Enter password for mobile app access'
+                }
+                required={!isSmsCredentialsDisabled}
+                disabled={isRegistrationApproved || isSmsCredentialsDisabled}
+                error={!!passwordError && !isSmsCredentialsDisabled}
                 helperText={
-                  passwordError ||
-                  'Password must be at least 8 characters with uppercase, lowercase, and number'
+                  isSmsCredentialsDisabled
+                    ? 'Password already set for this account'
+                    : passwordError ||
+                      'Password must be at least 8 characters with uppercase, lowercase, and number'
                 }
                 slotProps={{
                   input: {
-                    endAdornment: (
+                    endAdornment: !isSmsCredentialsDisabled && (
                       <InputAdornment position="end">
                         <IconButton
                           aria-label="toggle password visibility"
@@ -952,286 +990,255 @@ const ProfileContent = () => {
         </Box>
       </Paper>
 
-      {/* Confirmation Modal */}
+      {/* Confirmation Modal - Using Custom Dialog Component */}
       <Dialog
         open={confirmModalOpen}
         onClose={handleCloseModal}
-        maxWidth="md"
-        fullWidth
-        PaperProps={{
-          sx: { borderRadius: 3 },
-        }}
-      >
-        <DialogTitle sx={{ borderBottom: '1px solid #e9edf4', pb: 2 }}>
-          <Stack direction="row" alignItems="center" spacing={1}>
-            <IconifyIcon icon="mdi:clipboard-list" fontSize={28} color="#2563eb" />
-            <Typography variant="h6" sx={{ fontWeight: 600, color: '#1e293b' }}>
-              Confirm Student ID Information
+        title="Confirm Student ID Information"
+        maxWidth={600}
+        disableBackdropClick={true}
+        disableEscapeKeyDown={true}
+        showLoading={updating}
+        loadingTitle="Approving..."
+        actions={[
+          {
+            label: 'Cancel',
+            onClick: handleCloseModal,
+            color: 'secondary',
+            variant: 'outlined',
+          },
+          {
+            label: 'Approve ID Information',
+            onClick: handleConfirmApprove,
+            color: 'primary',
+            variant: 'contained',
+            disabled: !isCheckboxChecked || updating,
+            startIcon: 'mdi:check-circle',
+          },
+        ]}
+        content={
+          <Stack spacing={3} direction="column" sx={{ mt: 1 }}>
+            <Typography variant="body2" sx={{ color: '#64748b' }}>
+              Please review the student information below. Make sure all details are correct before
+              submitting.
             </Typography>
-          </Stack>
-        </DialogTitle>
 
-        <DialogContent sx={{ pt: 3, mt: 3 }}>
-          <Typography variant="body2" sx={{ color: '#64748b', mb: 3 }}>
-            Please review the student information below. Make sure all details are correct before
-            submitting.
-          </Typography>
-
-          {/* A. Personal Information Summary */}
-          <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#2563eb', mb: 2 }}>
-            A. Personal Information
-          </Typography>
-          <Grid container spacing={2} sx={{ mb: 3 }}>
-            <Grid size={{ xs: 6 }}>
-              <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
-                First Name
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                {editableData.first_name || '—'}
-              </Typography>
-            </Grid>
-            <Grid size={{ xs: 6 }}>
-              <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
-                Middle Initial
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                {editableData.middle_initial || '—'}
-              </Typography>
-            </Grid>
-            <Grid size={{ xs: 6 }}>
-              <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
-                Last Name
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                {editableData.surname || '—'}
-              </Typography>
-            </Grid>
-            <Grid size={{ xs: 6 }}>
-              <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
-                Suffix Name
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                {editableData.suffix_name || '—'}
-              </Typography>
-            </Grid>
-            <Grid size={{ xs: 6 }}>
-              <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
-                Nickname
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                {editableData.nick_name || '—'}
-              </Typography>
-            </Grid>
-            <Grid size={{ xs: 6 }}>
-              <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
-                Date of Birth
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                {editableData.birth_date || '—'}
-              </Typography>
-            </Grid>
-            <Grid size={{ xs: 6 }}>
-              <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
-                Gender
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                {editableData.gender || '—'}
-              </Typography>
-            </Grid>
-            <Grid size={{ xs: 6 }}>
-              <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
-                Name to Appear on ID Card
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                {editableData.name_to_appear_on_id || '—'}
-              </Typography>
-            </Grid>
-          </Grid>
-
-          <Divider sx={{ my: 2 }} />
-
-          {/* B. Additional Information Summary */}
-          <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#2563eb', mb: 2 }}>
-            B. Additional Information
-          </Typography>
-          <Grid container spacing={2} sx={{ mb: 3 }}>
-            <Grid size={{ xs: 12 }}>
-              <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
-                Residential Address
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                {editableData.residential_address || '—'}
-              </Typography>
-            </Grid>
-            <Grid size={{ xs: 6 }}>
-              <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
-                Emergency Contact Person
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                {editableData.emergency_contact_person || '—'}
-              </Typography>
-            </Grid>
-            <Grid size={{ xs: 6 }}>
-              <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
-                Emergency Contact Number
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                {editableData.emergency_contact_number || '—'}
-              </Typography>
-            </Grid>
-          </Grid>
-
-          <Divider sx={{ my: 2 }} />
-
-          {/* C. Parent/Guardian Information Summary */}
-          <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#2563eb', mb: 2 }}>
-            C. Parent/Guardian Information
-          </Typography>
-          <Grid container spacing={2} sx={{ mb: 3 }}>
-            <Grid size={{ xs: 6 }}>
-              <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
-                Parent/Guardian First Name
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                {editableData.parent_first_name || '—'}
-              </Typography>
-            </Grid>
-            <Grid size={{ xs: 6 }}>
-              <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
-                Parent/Guardian Last Name
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                {editableData.parent_surname || '—'}
-              </Typography>
-            </Grid>
-            <Grid size={{ xs: 12 }}>
-              <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
-                Parent/Guardian Email
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                {editableData.parent_email || '—'}
-              </Typography>
-            </Grid>
-            <Grid size={{ xs: 12 }}>
-              <Stack direction="row" alignItems="center" spacing={1}>
-                <Box sx={{ flex: 1 }}>
-                  <Typography
-                    variant="caption"
-                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
-                  >
-                    Mobile App / Web App Password
-                  </Typography>
-                  <Stack direction="row" alignItems="center" spacing={1}>
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                      {showModalPassword ? editableData.password : '••••••••'}
-                    </Typography>
-                    <IconButton
-                      aria-label="toggle password visibility"
-                      onClick={handleToggleModalPasswordVisibility}
-                      onMouseDown={(e) => e.preventDefault()}
-                      size="small"
-                    >
-                      <IconifyIcon
-                        icon={showModalPassword ? 'mdi:eye-off' : 'mdi:eye'}
-                        fontSize={18}
-                      />
-                    </IconButton>
-                  </Stack>
-                </Box>
-              </Stack>
-            </Grid>
-          </Grid>
-
-          <Divider sx={{ my: 2 }} />
-
-          {/* D. School Information Summary */}
-          <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#2563eb', mb: 2 }}>
-            D. School Information
-          </Typography>
-          <Grid container spacing={2} sx={{ mb: 3 }}>
-            <Grid size={{ xs: 6 }}>
-              <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
-                Level
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                {profileData?.level || '—'}
-              </Typography>
-            </Grid>
-            <Grid size={{ xs: 6 }}>
-              <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
-                Section/Course
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                {profileData?.section_course || '—'}
-              </Typography>
-            </Grid>
-            <Grid size={{ xs: 6 }}>
-              <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
-                LRN
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                {profileData?.lrn || '—'}
-              </Typography>
-            </Grid>
-            <Grid size={{ xs: 6 }}>
-              <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
-                ESC Voucher Recipient
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                {editableData.esc_voucher_recipient ? 'Yes' : 'No'}
-              </Typography>
-            </Grid>
-            {/* ✅ FIX 2: Add ESC Number to confirmation modal under School Information */}
-            {editableData.esc_voucher_recipient && editableData.esc_number && (
+            {/* A. Personal Information Summary */}
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#2563eb' }}>
+              A. Personal Information
+            </Typography>
+            <Grid container spacing={2}>
               <Grid size={{ xs: 6 }}>
                 <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
-                  ESC Number
+                  First Name
                 </Typography>
                 <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                  {editableData.esc_number || '—'}
+                  {editableData.first_name || '—'}
                 </Typography>
               </Grid>
-            )}
-          </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
+                  Middle Initial
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  {editableData.middle_initial || '—'}
+                </Typography>
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
+                  Last Name
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  {editableData.surname || '—'}
+                </Typography>
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
+                  Suffix Name
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  {editableData.suffix_name || '—'}
+                </Typography>
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
+                  Nickname
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  {editableData.nick_name || '—'}
+                </Typography>
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
+                  Date of Birth
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  {editableData.birth_date || '—'}
+                </Typography>
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
+                  Gender
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  {editableData.gender || '—'}
+                </Typography>
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
+                  Name to Appear on ID Card
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  {editableData.name_to_appear_on_id || '—'}
+                </Typography>
+              </Grid>
+            </Grid>
 
-          <Divider sx={{ my: 2 }} />
+            {/* B. Additional Information Summary */}
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#2563eb' }}>
+              B. Additional Information
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12 }}>
+                <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
+                  Residential Address
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  {editableData.residential_address || '—'}
+                </Typography>
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
+                  Emergency Contact Person
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  {editableData.emergency_contact_person || '—'}
+                </Typography>
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
+                  Emergency Contact Number
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  {editableData.emergency_contact_number || '—'}
+                </Typography>
+              </Grid>
+            </Grid>
 
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={isCheckboxChecked}
-                onChange={(e) => setIsCheckboxChecked(e.target.checked)}
-                sx={{ color: '#2563eb', '&.Mui-checked': { color: '#2563eb' } }}
-              />
-            }
-            label="I confirm that all the information provided above is correct and complete."
-            sx={{ mt: 2 }}
-          />
-        </DialogContent>
+            {/* C. Parent/Guardian Information Summary */}
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#2563eb' }}>
+              C. Parent/Guardian Information
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
+                  Parent/Guardian First Name
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  {editableData.parent_first_name || '—'}
+                </Typography>
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
+                  Parent/Guardian Last Name
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  {editableData.parent_surname || '—'}
+                </Typography>
+              </Grid>
+              <Grid size={{ xs: 12 }}>
+                <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
+                  Parent/Guardian Email
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  {editableData.parent_email || '—'}
+                </Typography>
+              </Grid>
+              <Grid size={{ xs: 12 }}>
+                <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
+                  Mobile App / Web App Password
+                </Typography>
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                    {showModalPassword ? editableData.password : '••••••••'}
+                  </Typography>
+                  <IconButton
+                    aria-label="toggle password visibility"
+                    onClick={handleToggleModalPasswordVisibility}
+                    onMouseDown={(e) => e.preventDefault()}
+                    size="small"
+                  >
+                    <IconifyIcon
+                      icon={showModalPassword ? 'mdi:eye-off' : 'mdi:eye'}
+                      fontSize={18}
+                    />
+                  </IconButton>
+                </Stack>
+              </Grid>
+            </Grid>
 
-        <DialogActions sx={{ borderTop: '1px solid #e9edf4', p: 2, gap: 2 }}>
-          <Button
-            onClick={handleCloseModal}
-            variant="outlined"
-            sx={{ color: '#64748b', borderColor: '#e2e8f0' }}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleConfirmApprove}
-            variant="contained"
-            disabled={!isCheckboxChecked || updating}
-            startIcon={<IconifyIcon icon="mdi:check-circle" />}
-            sx={{
-              bgcolor: '#2563eb',
-              '&:hover': { bgcolor: '#1d4ed8' },
-              '&.Mui-disabled': { bgcolor: '#94a3b8' },
-            }}
-          >
-            {updating ? 'Approving...' : 'Approve ID Information'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+            {/* D. School Information Summary */}
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#2563eb' }}>
+              D. School Information
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
+                  Level
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  {profileData?.level || '—'}
+                </Typography>
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
+                  Section/Course
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  {profileData?.section_course || '—'}
+                </Typography>
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
+                  LRN
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  {profileData?.lrn || '—'}
+                </Typography>
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
+                  ESC Voucher Recipient
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  {editableData.esc_voucher_recipient ? 'Yes' : 'No'}
+                </Typography>
+              </Grid>
+              {editableData.esc_voucher_recipient && editableData.esc_number && (
+                <Grid size={{ xs: 6 }}>
+                  <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
+                    ESC Number
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                    {editableData.esc_number || '—'}
+                  </Typography>
+                </Grid>
+              )}
+            </Grid>
+
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={isCheckboxChecked}
+                  onChange={(e) => setIsCheckboxChecked(e.target.checked)}
+                  sx={{ color: '#2563eb', '&.Mui-checked': { color: '#2563eb' } }}
+                />
+              }
+              label="I confirm that all the information provided above is correct and complete."
+            />
+          </Stack>
+        }
+      />
 
       <OnLoader open={updating} title="Submitting..." size={40} thickness={4} />
     </Box>
