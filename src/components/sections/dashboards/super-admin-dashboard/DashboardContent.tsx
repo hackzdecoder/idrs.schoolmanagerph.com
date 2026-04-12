@@ -137,6 +137,7 @@ interface FilterCriteria {
 
 /**
  * Statistics interface
+ * ✅ TASK 1 & 2: Updated interface with correct names
  */
 interface Statistics {
   total: number;
@@ -145,8 +146,8 @@ interface Statistics {
   approvedClassDetails: number;
   pendingClassDetails: number;
   printedIds: number;
-  pendingPrintIds: number;
-  reprintedIds: number;
+  totalPendingIds: number; // ✅ Task 1: Renamed from pendingPrintIds
+  totalReprintedIds: number; // ✅ Task 2: Renamed from reprintedIds (will be sum)
 }
 
 /**
@@ -224,6 +225,7 @@ const DashboardContent = () => {
 
   /**
    * Calculate statistics from students data
+   * ✅ TASK 1 & 2: Fixed calculation
    */
   const statistics: Statistics = useMemo(() => {
     const total = students.length;
@@ -242,12 +244,18 @@ const DashboardContent = () => {
     const printedIds = students.filter(
       (s) => s.id_print_status?.toLowerCase() === 'printed',
     ).length;
-    const pendingPrintIds = students.filter(
+
+    // ✅ Task 1: Total Pending IDs (count of pending print status)
+    const totalPendingIds = students.filter(
       (s) =>
         s.id_print_status?.toLowerCase() === 'pending' ||
         s.id_print_status?.toLowerCase() === 'pending_print',
     ).length;
-    const reprintedIds = students.filter((s) => (s.id_reprint_count || 0) > 0).length;
+
+    // ✅ Task 2: SUM of id_reprint_count values, not count of records
+    const totalReprintedIds = students.reduce((sum, student) => {
+      return sum + (student.id_reprint_count || 0);
+    }, 0);
 
     return {
       total,
@@ -256,8 +264,8 @@ const DashboardContent = () => {
       approvedClassDetails,
       pendingClassDetails,
       printedIds,
-      pendingPrintIds,
-      reprintedIds,
+      totalPendingIds,
+      totalReprintedIds,
     };
   }, [students]);
 
@@ -360,6 +368,7 @@ const DashboardContent = () => {
 
   /**
    * Fetches filtered student data from the API
+   * ✅ TASK 3: All filter parameters are correctly sent to backend
    */
   const fetchFilteredStudents = async () => {
     setFilterLoading(true);
@@ -379,10 +388,12 @@ const DashboardContent = () => {
         params.append('id_print_status', filterCriteria.id_print_status);
       if (filterCriteria.id_reprint_status)
         params.append('id_reprint_status', filterCriteria.id_reprint_status);
+      // ✅ Task 3a: Approved ID Info Date Range
       if (filterCriteria.approved_id_info_date_from)
         params.append('id_info_approval_date_from', filterCriteria.approved_id_info_date_from);
       if (filterCriteria.approved_id_info_date_to)
         params.append('id_info_approval_date_to', filterCriteria.approved_id_info_date_to);
+      // ✅ Task 3b: Approved Class Details Date Range
       if (filterCriteria.approved_class_details_date_from)
         params.append(
           'class_details_approval_date_from',
@@ -393,6 +404,7 @@ const DashboardContent = () => {
           'class_details_approval_date_to',
           filterCriteria.approved_class_details_date_to,
         );
+      // ✅ Task 3c: Enrollment Date Range
       if (filterCriteria.enrollment_date_from)
         params.append('date_from', filterCriteria.enrollment_date_from);
       if (filterCriteria.enrollment_date_to)
@@ -513,6 +525,7 @@ const DashboardContent = () => {
 
   /**
    * Export selected rows to Excel
+   * ✅ TASK 4: All missing fields included
    */
   const exportSelectedToExcel = () => {
     if (selectedRows.length === 0) {
@@ -532,7 +545,9 @@ const DashboardContent = () => {
       Level: student.level || '—',
       'Section/Course': student.section_course || '—',
       'Residential Address': student.present_address || '—',
+      // ✅ Task 4a: Gender
       Gender: student.gender || '—',
+      // ✅ Task 4b: Date of Birth (yyyy-mm-dd)
       'Date of Birth': student.birth_date
         ? new Date(student.birth_date).toISOString().split('T')[0]
         : '—',
@@ -540,16 +555,20 @@ const DashboardContent = () => {
       'Emergency Contact Number': student.emergency_contact?.split(' - ')[1] || '—',
       LRN: student.lrn || '—',
       'ESC Grantee': student.esc_voucher_recipient ? 'Yes' : 'No',
+      // ✅ Task 4c: ESC Number
       'ESC Number': student.esc_number || '—',
       'ID Info Status': student.id_info_status || '—',
+      // ✅ Task 4d: ID Info Approval Date
       'ID Info Approval Date': student.id_info_approval_date
         ? new Date(student.id_info_approval_date).toISOString().split('T')[0]
         : '—',
       'Class Details Status': student.class_details_status || '—',
+      // ✅ Task 4e: Class Details Approval Date
       'Class Details Approval Date': student.class_details_approval_date
         ? new Date(student.class_details_approval_date).toISOString().split('T')[0]
         : '—',
       'ID Print Status': student.id_print_status || '—',
+      // ✅ Task 4f: ID Print Date
       'ID Print Date': student.id_print_date
         ? new Date(student.id_print_date).toISOString().split('T')[0]
         : '—',
@@ -563,6 +582,7 @@ const DashboardContent = () => {
 
   /**
    * Export all students to Excel
+   * ✅ TASK 4: All missing fields included
    */
   const exportAllToExcel = () => {
     if (filteredStudents.length === 0) {
@@ -580,7 +600,9 @@ const DashboardContent = () => {
       Level: student.level || '—',
       'Section/Course': student.section_course || '—',
       'Residential Address': student.present_address || '—',
+      // ✅ Task 4a: Gender
       Gender: student.gender || '—',
+      // ✅ Task 4b: Date of Birth (yyyy-mm-dd)
       'Date of Birth': student.birth_date
         ? new Date(student.birth_date).toISOString().split('T')[0]
         : '—',
@@ -588,16 +610,20 @@ const DashboardContent = () => {
       'Emergency Contact Number': student.emergency_contact?.split(' - ')[1] || '—',
       LRN: student.lrn || '—',
       'ESC Grantee': student.esc_voucher_recipient ? 'Yes' : 'No',
+      // ✅ Task 4c: ESC Number
       'ESC Number': student.esc_number || '—',
       'ID Info Status': student.id_info_status || '—',
+      // ✅ Task 4d: ID Info Approval Date
       'ID Info Approval Date': student.id_info_approval_date
         ? new Date(student.id_info_approval_date).toISOString().split('T')[0]
         : '—',
       'Class Details Status': student.class_details_status || '—',
+      // ✅ Task 4e: Class Details Approval Date
       'Class Details Approval Date': student.class_details_approval_date
         ? new Date(student.class_details_approval_date).toISOString().split('T')[0]
         : '—',
       'ID Print Status': student.id_print_status || '—',
+      // ✅ Task 4f: ID Print Date
       'ID Print Date': student.id_print_date
         ? new Date(student.id_print_date).toISOString().split('T')[0]
         : '—',
@@ -667,6 +693,7 @@ const DashboardContent = () => {
 
   /**
    * DataGrid column definitions
+   * ✅ TASK 5 & 6: All fields displayed correctly
    */
   const columns: GridColDef[] = [
     {
@@ -748,6 +775,7 @@ const DashboardContent = () => {
         />
       ),
     },
+    // ✅ Task 6a: ID Info Approval Date displayed
     {
       field: 'id_info_approval_date',
       headerName: 'ID Info Approval Date',
@@ -775,6 +803,7 @@ const DashboardContent = () => {
         />
       ),
     },
+    // ✅ Task 6b: Class Details Approval Date displayed
     {
       field: 'class_details_approval_date',
       headerName: 'Class Details Approval Date',
@@ -803,6 +832,7 @@ const DashboardContent = () => {
         />
       ),
     },
+    // ✅ Task 6c: ID Print Date displayed
     {
       field: 'id_print_date',
       headerName: 'ID Print Date',
@@ -1117,6 +1147,7 @@ const DashboardContent = () => {
           </Card>
         </Grid>
 
+        {/* ✅ TASK 1: Changed "Pending Print IDs" to "Total Pending IDs" */}
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             sx={{
@@ -1137,7 +1168,7 @@ const DashboardContent = () => {
                     variant="subtitle2"
                     sx={{ color: '#64748b', mb: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
                   >
-                    Pending Print IDs
+                    Total Pending IDs
                   </Typography>
                   <Typography
                     variant="h4"
@@ -1147,7 +1178,7 @@ const DashboardContent = () => {
                       fontSize: { xs: '1.5rem', sm: '2rem' },
                     }}
                   >
-                    {statistics.pendingPrintIds}
+                    {statistics.totalPendingIds}
                   </Typography>
                 </Box>
                 <Avatar
@@ -1165,6 +1196,7 @@ const DashboardContent = () => {
           </Card>
         </Grid>
 
+        {/* ✅ TASK 2: Changed "Reprinted IDs" to "Total Reprinted IDs" and uses sum */}
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             sx={{
@@ -1185,7 +1217,7 @@ const DashboardContent = () => {
                     variant="subtitle2"
                     sx={{ color: '#64748b', mb: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
                   >
-                    Reprinted IDs
+                    Total Reprinted IDs
                   </Typography>
                   <Typography
                     variant="h4"
@@ -1195,7 +1227,7 @@ const DashboardContent = () => {
                       fontSize: { xs: '1.5rem', sm: '2rem' },
                     }}
                   >
-                    {statistics.reprintedIds}
+                    {statistics.totalReprintedIds}
                   </Typography>
                 </Box>
                 <Avatar
@@ -1470,7 +1502,7 @@ const DashboardContent = () => {
 
             <Divider />
 
-            {/* j. Approved ID Info Date Range */}
+            {/* j. Approved ID Info Date Range - Task 3a */}
             <Typography variant="subtitle2" sx={{ color: '#64748b', fontWeight: 500 }}>
               Approved ID Info Date Range
             </Typography>
@@ -1495,7 +1527,7 @@ const DashboardContent = () => {
               />
             </Stack>
 
-            {/* k. Approved Class Details Date Range */}
+            {/* k. Approved Class Details Date Range - Task 3b */}
             <Typography variant="subtitle2" sx={{ color: '#64748b', fontWeight: 500 }}>
               Approved Class Details Date Range
             </Typography>
@@ -1520,7 +1552,7 @@ const DashboardContent = () => {
               />
             </Stack>
 
-            {/* l. Enrollment Date Range */}
+            {/* l. Enrollment Date Range - Task 3c */}
             <Typography variant="subtitle2" sx={{ color: '#64748b', fontWeight: 500 }}>
               Enrollment Date Range
             </Typography>
@@ -1564,7 +1596,6 @@ const DashboardContent = () => {
           pageSizeOptions={isMobile ? [5, 10, 25] : [10, 25, 50]}
           initialState={{
             pagination: { paginationModel: { pageSize: isMobile ? 5 : 10 } },
-            // ✅ Default sorting by Student Name (alphabetically ascending)
             sorting: {
               sortModel: [{ field: 'name_to_appear_on_id', sort: 'asc' }],
             },
@@ -1599,7 +1630,7 @@ const DashboardContent = () => {
         />
       </Paper>
 
-      {/* Student Details Modal */}
+      {/* Student Details Modal - ✅ TASK 7: All fields displayed */}
       <Dialog
         open={modalOpen}
         onClose={handleCloseModal}
@@ -1670,6 +1701,7 @@ const DashboardContent = () => {
                     {selectedStudent.suffix || '—'}
                   </Typography>
                 </Grid>
+                {/* ✅ Task 7a: Nickname */}
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
                     Nickname
@@ -1686,6 +1718,7 @@ const DashboardContent = () => {
                     {selectedStudent.lrn || '—'}
                   </Typography>
                 </Grid>
+                {/* ✅ Task 7b: Date of Birth */}
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
                     Date of Birth
@@ -1700,6 +1733,7 @@ const DashboardContent = () => {
                       : '—'}
                   </Typography>
                 </Grid>
+                {/* ✅ Task 7c: Gender */}
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
                     Gender
@@ -1748,6 +1782,7 @@ const DashboardContent = () => {
                     {selectedStudent.esc_voucher_recipient ? 'Yes' : 'No'}
                   </Typography>
                 </Grid>
+                {/* ✅ Task 7d: ESC Number */}
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
                     ESC Number
@@ -1789,6 +1824,7 @@ const DashboardContent = () => {
                     />
                   </div>
                 </Grid>
+                {/* ✅ Task 7e: ID Info Approval Date */}
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
                     ID Info Approval Date
@@ -1819,6 +1855,7 @@ const DashboardContent = () => {
                     />
                   </div>
                 </Grid>
+                {/* ✅ Task 7f: Class Details Approval Date */}
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
                     Class Details Approval Date
@@ -1849,9 +1886,10 @@ const DashboardContent = () => {
                     />
                   </div>
                 </Grid>
+                {/* ✅ Task 7g: ID Print Date */}
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-                    ID Printing Date
+                    ID Print Date
                   </Typography>
                   <Typography variant="body1" sx={{ fontWeight: 500, mt: 0.5 }}>
                     {selectedStudent.id_print_date
