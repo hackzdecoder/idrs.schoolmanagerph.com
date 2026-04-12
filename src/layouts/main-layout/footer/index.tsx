@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { Box, Divider, Stack, Typography } from '@mui/material';
+import { Box, Divider, Stack, Typography, useMediaQuery, useTheme } from '@mui/material';
 import useRouteApiSetup from 'hooks/useRouteApiSetup';
 
 const Footer = () => {
   const { get } = useRouteApiSetup();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [copyrightNotice, setCopyrightNotice] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const hasFetched = useRef(false);
@@ -19,16 +21,23 @@ const Footer = () => {
 
         if (response?.success && response?.data?.copyright_notice) {
           setCopyrightNotice(response.data.copyright_notice);
+        } else {
+          // Fallback default
+          const year = new Date().getFullYear();
+          setCopyrightNotice(`© ${year} TaparSoft Enterprise. All rights reserved.`);
         }
       } catch (error) {
         console.error('Failed to fetch footer data:', error);
+        // Fallback default
+        const year = new Date().getFullYear();
+        setCopyrightNotice(`© ${year} TaparSoft Enterprise. All rights reserved.`);
       } finally {
         setLoading(false);
       }
     };
 
     fetchFooterData();
-  }, []);
+  }, [get]);
 
   if (loading) {
     return null;
@@ -36,30 +45,25 @@ const Footer = () => {
 
   return (
     <Box
+      component="footer"
       sx={{
-        position: 'sticky',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        zIndex: 1100,
+        mt: 'auto', // ✅ Pushes footer to bottom
         bgcolor: 'background.default',
         width: '100%',
       }}
     >
       <Divider />
       <Stack
-        component="footer"
         sx={{
           justifyContent: 'center',
           alignItems: 'center',
-          height: { xs: 72, sm: 56 },
-          py: 1,
-          px: { xs: 3, md: 5 },
+          py: 2,
+          px: { xs: 2, sm: 3, md: 5 },
           textAlign: 'center',
         }}
       >
         <Typography
-          variant="caption"
+          variant={isMobile ? 'caption' : 'body2'}
           sx={{
             color: 'text.secondary',
           }}
