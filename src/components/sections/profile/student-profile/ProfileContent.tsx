@@ -282,6 +282,45 @@ const ProfileContent = () => {
 
     fetchUserProfile();
   }, [get]);
+  // ✅ NEW: Fetch existing parent data when SMS credentials exist
+  useEffect(() => {
+    const fetchExistingParentData = async () => {
+      if (
+        smsCredentialsExist &&
+        profileData?.emergency_contact_number &&
+        profileData?.school_code
+      ) {
+        try {
+          const response = await get<{
+            success: boolean;
+            data: {
+              parent_first_name: string | null;
+              parent_surname: string | null;
+              parent_email: string | null;
+            };
+          }>('/student/existing-parent-data', {
+            params: {
+              emergency_contact_number: profileData.emergency_contact_number,
+              school_code: profileData.school_code,
+            },
+          });
+
+          if (response.success && response.data) {
+            setEditableData((prev) => ({
+              ...prev,
+              parent_first_name: response.data.parent_first_name || '',
+              parent_surname: response.data.parent_surname || '',
+              parent_email: response.data.parent_email || '',
+            }));
+          }
+        } catch (error) {
+          console.error('Failed to fetch existing parent data:', error);
+        }
+      }
+    };
+
+    fetchExistingParentData();
+  }, [smsCredentialsExist, profileData?.emergency_contact_number, profileData?.school_code, get]);
 
   const handleFieldChange = (field: string, value: string) => {
     if (isApproved) return;
