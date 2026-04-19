@@ -230,7 +230,7 @@ const AdminLoginForm: React.FC = () => {
                 variant="h4"
                 sx={{ fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' } }}
               >
-                SUPERADMIN AND SCHOOL LOGIN PAGE
+                ID Registration Portal
               </Typography>
 
               <Typography

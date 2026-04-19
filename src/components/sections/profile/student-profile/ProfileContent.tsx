@@ -152,6 +152,7 @@ const ProfileContent = () => {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const fetchedRef = useRef(false);
+  const hasFetchedParentData = useRef(false); // ✅ Prevent duplicate API calls
   const [isApproved, setIsApproved] = useState(false);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [isCheckboxChecked, setIsCheckboxChecked] = useState(false);
@@ -282,15 +283,21 @@ const ProfileContent = () => {
 
     fetchUserProfile();
   }, [get]);
-  // ✅ NEW: Fetch existing parent data when SMS credentials exist
+
+  // ✅ Fetch existing parent data when SMS credentials exist (with duplicate prevention)
   useEffect(() => {
     const fetchExistingParentData = async () => {
+      // Prevent duplicate API calls
+      if (hasFetchedParentData.current) return;
+
       if (
         smsCredentialsExist &&
         profileData?.emergency_contact_number &&
         profileData?.school_code
       ) {
         try {
+          hasFetchedParentData.current = true;
+
           const response = await get<{
             success: boolean;
             data: {
@@ -320,7 +327,7 @@ const ProfileContent = () => {
     };
 
     fetchExistingParentData();
-  }, [smsCredentialsExist, profileData?.emergency_contact_number, profileData?.school_code, get]);
+  }, [smsCredentialsExist, profileData?.emergency_contact_number, profileData?.school_code]);
 
   const handleFieldChange = (field: string, value: string) => {
     if (isApproved) return;
