@@ -156,6 +156,7 @@ const ProfileContent = () => {
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [isCheckboxChecked, setIsCheckboxChecked] = useState(false);
   const [smsCredentialsExist, setSmsCredentialsExist] = useState(false);
+  const [parentDataFetched, setParentDataFetched] = useState(false);
 
   // State for password visibility toggle
   const [showPassword, setShowPassword] = useState(false);
@@ -283,19 +284,25 @@ const ProfileContent = () => {
     fetchUserProfile();
   }, [get]);
 
-  // ✅ Fetch existing parent data when SMS credentials exist
+  // ✅ Fetch existing parent data when SMS credentials exist (for 2nd+ submissions)
   useEffect(() => {
     const fetchExistingParentData = async () => {
+      // Reset parent data fetched flag when student changes
+      if (!profileData?.emergency_contact_number || !profileData?.school_code) {
+        setParentDataFetched(false);
+        return;
+      }
+
       if (
         smsCredentialsExist &&
         profileData?.emergency_contact_number &&
-        profileData?.school_code
+        profileData?.school_code &&
+        !parentDataFetched
       ) {
         try {
-          console.log('Fetching existing parent data for 2nd+ submission:', {
+          console.log('Fetching existing parent data for student:', {
             emergency_contact_number: profileData.emergency_contact_number,
             school_code: profileData.school_code,
-            smsCredentialsExist: smsCredentialsExist,
           });
 
           const response = await get<{
@@ -312,7 +319,7 @@ const ProfileContent = () => {
             },
           });
 
-          console.log('Existing parent data response:', response);
+          console.log('Parent data API response:', response);
 
           if (response.success && response.data) {
             setEditableData((prev) => ({
@@ -321,7 +328,8 @@ const ProfileContent = () => {
               parent_surname: response.data.parent_surname || '',
               parent_email: response.data.parent_email || '',
             }));
-            console.log('Parent fields pre-filled:', response.data);
+            setParentDataFetched(true);
+            console.log('Parent fields pre-filled successfully');
           }
         } catch (error) {
           console.error('Failed to fetch existing parent data:', error);
@@ -330,7 +338,13 @@ const ProfileContent = () => {
     };
 
     fetchExistingParentData();
-  }, [smsCredentialsExist, profileData?.emergency_contact_number, profileData?.school_code]);
+  }, [
+    smsCredentialsExist,
+    profileData?.emergency_contact_number,
+    profileData?.school_code,
+    parentDataFetched,
+    get,
+  ]);
 
   const handleFieldChange = (field: string, value: string) => {
     if (isApproved) return;
