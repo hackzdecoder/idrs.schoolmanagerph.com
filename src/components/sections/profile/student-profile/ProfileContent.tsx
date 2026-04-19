@@ -152,7 +152,6 @@ const ProfileContent = () => {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const fetchedRef = useRef(false);
-  const hasFetchedParentData = useRef(false); // ✅ Prevent duplicate API calls
   const [isApproved, setIsApproved] = useState(false);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [isCheckboxChecked, setIsCheckboxChecked] = useState(false);
@@ -284,19 +283,20 @@ const ProfileContent = () => {
     fetchUserProfile();
   }, [get]);
 
-  // ✅ Fetch existing parent data when SMS credentials exist (with duplicate prevention)
+  // ✅ Fetch existing parent data when SMS credentials exist
   useEffect(() => {
     const fetchExistingParentData = async () => {
-      // Prevent duplicate API calls
-      if (hasFetchedParentData.current) return;
-
       if (
         smsCredentialsExist &&
         profileData?.emergency_contact_number &&
         profileData?.school_code
       ) {
         try {
-          hasFetchedParentData.current = true;
+          console.log('Fetching existing parent data for 2nd+ submission:', {
+            emergency_contact_number: profileData.emergency_contact_number,
+            school_code: profileData.school_code,
+            smsCredentialsExist: smsCredentialsExist,
+          });
 
           const response = await get<{
             success: boolean;
@@ -312,6 +312,8 @@ const ProfileContent = () => {
             },
           });
 
+          console.log('Existing parent data response:', response);
+
           if (response.success && response.data) {
             setEditableData((prev) => ({
               ...prev,
@@ -319,6 +321,7 @@ const ProfileContent = () => {
               parent_surname: response.data.parent_surname || '',
               parent_email: response.data.parent_email || '',
             }));
+            console.log('Parent fields pre-filled:', response.data);
           }
         } catch (error) {
           console.error('Failed to fetch existing parent data:', error);
