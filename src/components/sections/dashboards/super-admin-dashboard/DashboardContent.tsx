@@ -36,7 +36,7 @@ import PageLoader from 'components/loading/PageLoader';
 import DataGridPagination from 'components/pagination/DataGridPagination';
 
 /**
- * Interface matching the backend StudentIdInfo response structure
+ * Interface matching EXACTLY what the backend StudentController@index returns
  */
 interface StudentInformation {
   id: number;
@@ -148,6 +148,81 @@ interface Statistics {
   totalPendingIds: number;
   totalReprintedIds: number;
 }
+
+/**
+ * Capitalizes first letter of a string without forcing the rest to lowercase
+ * Use this for proper nouns and phrases like "Section A"
+ */
+const capitalizeFirstLetter = (str: string): string => {
+  if (!str) return '';
+  return str.charAt(0).toUpperCase() + str.slice(1);
+};
+
+/**
+ * Capitalizes first letter of each word (for names)
+ */
+const capitalizeWords = (str: string): string => {
+  if (!str) return '';
+  return str
+    .split(' ')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+};
+
+/**
+ * Formats a name properly (first letter uppercase, rest lowercase)
+ * Use this for first names, surnames, etc.
+ */
+const formatName = (name: string | null | undefined): string => {
+  if (!name) return '—';
+  return capitalizeWords(name);
+};
+
+/**
+ * Formats a middle initial (always uppercase)
+ */
+const formatMiddleInitial = (initial: string | null | undefined): string => {
+  if (!initial) return '—';
+  return initial.toUpperCase();
+};
+
+/**
+ * Formats text that should preserve original casing (like addresses, section names)
+ */
+const preserveCase = (text: string | null | undefined): string => {
+  if (!text) return '—';
+  return text;
+};
+
+/**
+ * Format status for display with proper capitalization
+ */
+const formatStatus = (status: string | undefined | null): string => {
+  if (!status) return '—';
+  if (status.toLowerCase() === 'yes') return 'Yes';
+  if (status.toLowerCase() === 'no') return 'No';
+  return capitalizeFirstLetter(status);
+};
+
+/**
+ * Format student type for display
+ */
+const formatStudentType = (type: string | undefined | null): string => {
+  if (!type) return 'Not specified';
+  if (type.toLowerCase() === 'new') return 'New Student';
+  if (type.toLowerCase() === 'old') return 'Old Student';
+  return capitalizeFirstLetter(type);
+};
+
+/**
+ * Get color for student type badge
+ */
+const getStudentTypeColor = (type: string | undefined | null): string => {
+  if (!type) return 'default';
+  if (type.toLowerCase() === 'new') return 'info';
+  if (type.toLowerCase() === 'old') return 'secondary';
+  return 'default';
+};
 
 /**
  * Returns the appropriate MUI color based on status
@@ -340,13 +415,13 @@ const DashboardContent = () => {
           parent_full_name: student.parent_full_name,
           parent_email: student.parent_email,
           emergency_contact: student.emergency_contact,
+          // ✅ ADDED: Missing field mappings for modal display
           nick_name: student.nick_name || null,
           birth_date: student.birth_date || null,
           gender: student.gender || null,
+          esc_number: student.esc_number || null,
           id_info_approval_date: student.id_info_approval_date || null,
           class_details_approval_date: student.class_details_approval_date || null,
-          esc_voucher_recipient: student.esc_voucher_recipient || false,
-          esc_number: student.esc_number || null,
           id_print_date: student.id_print_date || null,
         }));
         setStudents(studentRecords);
@@ -437,13 +512,13 @@ const DashboardContent = () => {
           parent_full_name: student.parent_full_name,
           parent_email: student.parent_email,
           emergency_contact: student.emergency_contact,
+          // ✅ ADDED: Missing field mappings for modal display
           nick_name: student.nick_name || null,
           birth_date: student.birth_date || null,
           gender: student.gender || null,
+          esc_number: student.esc_number || null,
           id_info_approval_date: student.id_info_approval_date || null,
           class_details_approval_date: student.class_details_approval_date || null,
-          esc_voucher_recipient: student.esc_voucher_recipient || false,
-          esc_number: student.esc_number || null,
           id_print_date: student.id_print_date || null,
         }));
         setStudents(studentRecords);
@@ -488,7 +563,7 @@ const DashboardContent = () => {
   };
 
   /**
-   * ✅ CHANGE 2 & 3: Update section options when level changes based on current filters
+   * Handle level change - updates section options based on selected school code and level
    */
   const handleLevelChange = (event: SelectChangeEvent) => {
     const selectedLevel = event.target.value;
@@ -497,14 +572,12 @@ const DashboardContent = () => {
     if (selectedLevel) {
       let filteredSections = students;
 
-      // Apply school code filter if selected
       if (filterCriteria.school_code) {
         filteredSections = filteredSections.filter(
           (s) => s.school_code === filterCriteria.school_code,
         );
       }
 
-      // Apply level filter
       filteredSections = filteredSections.filter((s) => s.level === selectedLevel);
 
       const sections = [
@@ -514,7 +587,6 @@ const DashboardContent = () => {
     } else {
       let allSections = students;
 
-      // Apply school code filter if selected
       if (filterCriteria.school_code) {
         allSections = allSections.filter((s) => s.school_code === filterCriteria.school_code);
       }
@@ -546,31 +618,31 @@ const DashboardContent = () => {
     const worksheetData = dataToExport.map((student) => ({
       'School Code': student.school_code || '—',
       'Student ID No.': student.student_id || '—',
-      'Last Name': student.last_name || '—',
-      'First Name': student.first_name || '—',
-      'Middle Initial': student.middle_initial || '—',
-      'Name to Appear on ID Card': student.name_to_appear_on_id || '—',
-      Level: student.level || '—',
-      'Section/Course': student.section_course || '—',
-      'Residential Address': student.present_address || '—',
-      Gender: student.gender || '—',
+      'Last Name': formatName(student.last_name),
+      'First Name': formatName(student.first_name),
+      'Middle Initial': formatMiddleInitial(student.middle_initial),
+      'Name to Appear on ID Card': preserveCase(student.name_to_appear_on_id),
+      Level: preserveCase(student.level),
+      'Section/Course': preserveCase(student.section_course),
+      'Residential Address': preserveCase(student.present_address),
+      Gender: capitalizeFirstLetter(student.gender || ''),
       'Date of Birth': student.birth_date
         ? new Date(student.birth_date).toISOString().split('T')[0]
         : '—',
-      'Emergency Contact Person': student.emergency_contact?.split(' - ')[0] || '—',
+      'Emergency Contact Person': formatName(student.emergency_contact?.split(' - ')[0]),
       'Emergency Contact Number': student.emergency_contact?.split(' - ')[1] || '—',
       LRN: student.lrn || '—',
       'ESC Grantee': student.esc_voucher_recipient ? 'Yes' : 'No',
       'ESC Number': student.esc_number || '—',
-      'ID Info Status': student.id_info_status || '—',
+      'ID Info Status': formatStatus(student.id_info_status),
       'ID Info Approval Date': student.id_info_approval_date
         ? new Date(student.id_info_approval_date).toISOString().split('T')[0]
         : '—',
-      'Class Details Status': student.class_details_status || '—',
+      'Class Details Status': formatStatus(student.class_details_status),
       'Class Details Approval Date': student.class_details_approval_date
         ? new Date(student.class_details_approval_date).toISOString().split('T')[0]
         : '—',
-      'ID Print Status': student.id_print_status || '—',
+      'ID Print Status': formatStatus(student.id_print_status),
       'ID Print Date': student.id_print_date
         ? new Date(student.id_print_date).toISOString().split('T')[0]
         : '—',
@@ -594,31 +666,31 @@ const DashboardContent = () => {
     const worksheetData = filteredStudents.map((student) => ({
       'School Code': student.school_code || '—',
       'Student ID No.': student.student_id || '—',
-      'Last Name': student.last_name || '—',
-      'First Name': student.first_name || '—',
-      'Middle Initial': student.middle_initial || '—',
-      'Name to Appear on ID Card': student.name_to_appear_on_id || '—',
-      Level: student.level || '—',
-      'Section/Course': student.section_course || '—',
-      'Residential Address': student.present_address || '—',
-      Gender: student.gender || '—',
+      'Last Name': formatName(student.last_name),
+      'First Name': formatName(student.first_name),
+      'Middle Initial': formatMiddleInitial(student.middle_initial),
+      'Name to Appear on ID Card': preserveCase(student.name_to_appear_on_id),
+      Level: preserveCase(student.level),
+      'Section/Course': preserveCase(student.section_course),
+      'Residential Address': preserveCase(student.present_address),
+      Gender: capitalizeFirstLetter(student.gender || ''),
       'Date of Birth': student.birth_date
         ? new Date(student.birth_date).toISOString().split('T')[0]
         : '—',
-      'Emergency Contact Person': student.emergency_contact?.split(' - ')[0] || '—',
+      'Emergency Contact Person': formatName(student.emergency_contact?.split(' - ')[0]),
       'Emergency Contact Number': student.emergency_contact?.split(' - ')[1] || '—',
       LRN: student.lrn || '—',
       'ESC Grantee': student.esc_voucher_recipient ? 'Yes' : 'No',
       'ESC Number': student.esc_number || '—',
-      'ID Info Status': student.id_info_status || '—',
+      'ID Info Status': formatStatus(student.id_info_status),
       'ID Info Approval Date': student.id_info_approval_date
         ? new Date(student.id_info_approval_date).toISOString().split('T')[0]
         : '—',
-      'Class Details Status': student.class_details_status || '—',
+      'Class Details Status': formatStatus(student.class_details_status),
       'Class Details Approval Date': student.class_details_approval_date
         ? new Date(student.class_details_approval_date).toISOString().split('T')[0]
         : '—',
-      'ID Print Status': student.id_print_status || '—',
+      'ID Print Status': formatStatus(student.id_print_status),
       'ID Print Date': student.id_print_date
         ? new Date(student.id_print_date).toISOString().split('T')[0]
         : '—',
@@ -700,7 +772,7 @@ const DashboardContent = () => {
       width: 120,
       renderCell: (params: GridRenderCellParams) => (
         <Typography variant="body2" sx={{ fontWeight: 500 }}>
-          {params.row.school_code}
+          {preserveCase(params.row.school_code)}
         </Typography>
       ),
     },
@@ -720,10 +792,12 @@ const DashboardContent = () => {
       width: 200,
       renderCell: (params: GridRenderCellParams) => (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: '0.875rem' }}>
+          <Avatar sx={{ width: 32, height: 32, bgcolor: '#2563eb', fontSize: '0.875rem' }}>
             {params.row.name_to_appear_on_id?.charAt(0) || 'S'}
           </Avatar>
-          {params.row.name_to_appear_on_id}
+          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+            {preserveCase(params.row.name_to_appear_on_id)}
+          </Typography>
         </Box>
       ),
     },
@@ -732,7 +806,7 @@ const DashboardContent = () => {
       headerName: 'Level',
       width: 100,
       renderCell: (params: GridRenderCellParams) => (
-        <Typography variant="body2">{params.row.level || '—'}</Typography>
+        <Typography variant="body2">{preserveCase(params.row.level)}</Typography>
       ),
     },
     {
@@ -740,7 +814,7 @@ const DashboardContent = () => {
       headerName: 'Section/Course',
       width: 140,
       renderCell: (params: GridRenderCellParams) => (
-        <Typography variant="body2">{params.row.section_course || '—'}</Typography>
+        <Typography variant="body2">{preserveCase(params.row.section_course)}</Typography>
       ),
     },
     {
@@ -762,7 +836,7 @@ const DashboardContent = () => {
       width: 130,
       renderCell: (params: GridRenderCellParams) => (
         <Chip
-          label={params.row.id_info_status || '—'}
+          label={formatStatus(params.row.id_info_status)}
           color={getStatusColor(params.row.id_info_status) as any}
           size="small"
           sx={{ fontWeight: 500 }}
@@ -789,7 +863,7 @@ const DashboardContent = () => {
       width: 160,
       renderCell: (params: GridRenderCellParams) => (
         <Chip
-          label={params.row.class_details_status || '—'}
+          label={formatStatus(params.row.class_details_status)}
           color={getStatusColor(params.row.class_details_status) as any}
           size="small"
           sx={{ fontWeight: 500 }}
@@ -817,7 +891,7 @@ const DashboardContent = () => {
       width: 140,
       renderCell: (params: GridRenderCellParams) => (
         <Chip
-          label={params.row.id_print_status || '—'}
+          label={formatStatus(params.row.id_print_status)}
           color={getStatusColor(params.row.id_print_status) as any}
           size="small"
           sx={{ fontWeight: 500 }}
@@ -845,29 +919,20 @@ const DashboardContent = () => {
   }
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 3 } }}>
-      {/* Statistics Cards */}
+    <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+      {/* Statistics Cards - Row 1 */}
       <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: { xs: 3, sm: 4 } }}>
-        {/* Row 1 */}
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
-            sx={{
-              borderRadius: 3,
-              boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-              border: '1px solid #e9edf4',
-              transition: 'transform 0.2s, box-shadow 0.2s',
-              '&:hover': {
-                transform: 'translateY(-4px)',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
-              },
-            }}
+            variant="outlined"
+            sx={{ borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
           >
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Stack direction="row" alignItems="center" justifyContent="space-between">
                 <Box>
                   <Typography
-                    variant="subtitle2"
-                    sx={{ color: '#64748b', mb: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block', mb: 0.5 }}
                   >
                     Total Students
                   </Typography>
@@ -882,16 +947,9 @@ const DashboardContent = () => {
                     {statistics.total}
                   </Typography>
                 </Box>
-                <Avatar
-                  sx={{
-                    bgcolor: '#eef2ff',
-                    color: '#2563eb',
-                    width: { xs: 40, sm: 48 },
-                    height: { xs: 40, sm: 48 },
-                  }}
-                >
-                  <IconifyIcon icon="mdi:account-group" sx={{ fontSize: { xs: 24, sm: 28 } }} />
-                </Avatar>
+                <Box sx={{ bgcolor: '#e0e7ff', p: 1, borderRadius: 2 }}>
+                  <IconifyIcon icon="mdi:account-group" fontSize={24} color="#2563eb" />
+                </Box>
               </Stack>
             </CardContent>
           </Card>
@@ -899,23 +957,15 @@ const DashboardContent = () => {
 
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
-            sx={{
-              borderRadius: 3,
-              boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-              border: '1px solid #e9edf4',
-              transition: 'transform 0.2s, box-shadow 0.2s',
-              '&:hover': {
-                transform: 'translateY(-4px)',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
-              },
-            }}
+            variant="outlined"
+            sx={{ borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
           >
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Stack direction="row" alignItems="center" justifyContent="space-between">
                 <Box>
                   <Typography
-                    variant="subtitle2"
-                    sx={{ color: '#64748b', mb: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block', mb: 0.5 }}
                   >
                     Approved ID Info
                   </Typography>
@@ -930,16 +980,9 @@ const DashboardContent = () => {
                     {statistics.approvedIdInfo}
                   </Typography>
                 </Box>
-                <Avatar
-                  sx={{
-                    bgcolor: '#d1fae5',
-                    color: '#10b981',
-                    width: { xs: 40, sm: 48 },
-                    height: { xs: 40, sm: 48 },
-                  }}
-                >
-                  <IconifyIcon icon="mdi:check-circle" sx={{ fontSize: { xs: 24, sm: 28 } }} />
-                </Avatar>
+                <Box sx={{ bgcolor: '#d1fae5', p: 1, borderRadius: 2 }}>
+                  <IconifyIcon icon="mdi:check-circle" fontSize={24} color="#10b981" />
+                </Box>
               </Stack>
             </CardContent>
           </Card>
@@ -947,23 +990,15 @@ const DashboardContent = () => {
 
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
-            sx={{
-              borderRadius: 3,
-              boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-              border: '1px solid #e9edf4',
-              transition: 'transform 0.2s, box-shadow 0.2s',
-              '&:hover': {
-                transform: 'translateY(-4px)',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
-              },
-            }}
+            variant="outlined"
+            sx={{ borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
           >
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Stack direction="row" alignItems="center" justifyContent="space-between">
                 <Box>
                   <Typography
-                    variant="subtitle2"
-                    sx={{ color: '#64748b', mb: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block', mb: 0.5 }}
                   >
                     Pending ID Info
                   </Typography>
@@ -978,16 +1013,9 @@ const DashboardContent = () => {
                     {statistics.pendingIdInfo}
                   </Typography>
                 </Box>
-                <Avatar
-                  sx={{
-                    bgcolor: '#fef3c7',
-                    color: '#f59e0b',
-                    width: { xs: 40, sm: 48 },
-                    height: { xs: 40, sm: 48 },
-                  }}
-                >
-                  <IconifyIcon icon="mdi:clock-outline" sx={{ fontSize: { xs: 24, sm: 28 } }} />
-                </Avatar>
+                <Box sx={{ bgcolor: '#fef3c7', p: 1, borderRadius: 2 }}>
+                  <IconifyIcon icon="mdi:clock-outline" fontSize={24} color="#f59e0b" />
+                </Box>
               </Stack>
             </CardContent>
           </Card>
@@ -995,23 +1023,15 @@ const DashboardContent = () => {
 
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
-            sx={{
-              borderRadius: 3,
-              boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-              border: '1px solid #e9edf4',
-              transition: 'transform 0.2s, box-shadow 0.2s',
-              '&:hover': {
-                transform: 'translateY(-4px)',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
-              },
-            }}
+            variant="outlined"
+            sx={{ borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
           >
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Stack direction="row" alignItems="center" justifyContent="space-between">
                 <Box>
                   <Typography
-                    variant="subtitle2"
-                    sx={{ color: '#64748b', mb: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block', mb: 0.5 }}
                   >
                     Approved Class Details
                   </Typography>
@@ -1026,41 +1046,28 @@ const DashboardContent = () => {
                     {statistics.approvedClassDetails}
                   </Typography>
                 </Box>
-                <Avatar
-                  sx={{
-                    bgcolor: '#d1fae5',
-                    color: '#10b981',
-                    width: { xs: 40, sm: 48 },
-                    height: { xs: 40, sm: 48 },
-                  }}
-                >
-                  <IconifyIcon icon="mdi:check-circle" sx={{ fontSize: { xs: 24, sm: 28 } }} />
-                </Avatar>
+                <Box sx={{ bgcolor: '#d1fae5', p: 1, borderRadius: 2 }}>
+                  <IconifyIcon icon="mdi:check-circle" fontSize={24} color="#10b981" />
+                </Box>
               </Stack>
             </CardContent>
           </Card>
         </Grid>
+      </Grid>
 
-        {/* Row 2 */}
+      {/* Statistics Cards - Row 2 */}
+      <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: { xs: 3, sm: 4 } }}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
-            sx={{
-              borderRadius: 3,
-              boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-              border: '1px solid #e9edf4',
-              transition: 'transform 0.2s, box-shadow 0.2s',
-              '&:hover': {
-                transform: 'translateY(-4px)',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
-              },
-            }}
+            variant="outlined"
+            sx={{ borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
           >
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Stack direction="row" alignItems="center" justifyContent="space-between">
                 <Box>
                   <Typography
-                    variant="subtitle2"
-                    sx={{ color: '#64748b', mb: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block', mb: 0.5 }}
                   >
                     Pending Class Details
                   </Typography>
@@ -1075,16 +1082,9 @@ const DashboardContent = () => {
                     {statistics.pendingClassDetails}
                   </Typography>
                 </Box>
-                <Avatar
-                  sx={{
-                    bgcolor: '#fef3c7',
-                    color: '#f59e0b',
-                    width: { xs: 40, sm: 48 },
-                    height: { xs: 40, sm: 48 },
-                  }}
-                >
-                  <IconifyIcon icon="mdi:clock-outline" sx={{ fontSize: { xs: 24, sm: 28 } }} />
-                </Avatar>
+                <Box sx={{ bgcolor: '#fef3c7', p: 1, borderRadius: 2 }}>
+                  <IconifyIcon icon="mdi:clock-outline" fontSize={24} color="#f59e0b" />
+                </Box>
               </Stack>
             </CardContent>
           </Card>
@@ -1092,23 +1092,15 @@ const DashboardContent = () => {
 
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
-            sx={{
-              borderRadius: 3,
-              boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-              border: '1px solid #e9edf4',
-              transition: 'transform 0.2s, box-shadow 0.2s',
-              '&:hover': {
-                transform: 'translateY(-4px)',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
-              },
-            }}
+            variant="outlined"
+            sx={{ borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
           >
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Stack direction="row" alignItems="center" justifyContent="space-between">
                 <Box>
                   <Typography
-                    variant="subtitle2"
-                    sx={{ color: '#64748b', mb: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block', mb: 0.5 }}
                   >
                     Printed IDs
                   </Typography>
@@ -1123,16 +1115,9 @@ const DashboardContent = () => {
                     {statistics.printedIds}
                   </Typography>
                 </Box>
-                <Avatar
-                  sx={{
-                    bgcolor: '#d1fae5',
-                    color: '#10b981',
-                    width: { xs: 40, sm: 48 },
-                    height: { xs: 40, sm: 48 },
-                  }}
-                >
-                  <IconifyIcon icon="mdi:printer" sx={{ fontSize: { xs: 24, sm: 28 } }} />
-                </Avatar>
+                <Box sx={{ bgcolor: '#d1fae5', p: 1, borderRadius: 2 }}>
+                  <IconifyIcon icon="mdi:printer" fontSize={24} color="#10b981" />
+                </Box>
               </Stack>
             </CardContent>
           </Card>
@@ -1140,23 +1125,15 @@ const DashboardContent = () => {
 
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
-            sx={{
-              borderRadius: 3,
-              boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-              border: '1px solid #e9edf4',
-              transition: 'transform 0.2s, box-shadow 0.2s',
-              '&:hover': {
-                transform: 'translateY(-4px)',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
-              },
-            }}
+            variant="outlined"
+            sx={{ borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
           >
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Stack direction="row" alignItems="center" justifyContent="space-between">
                 <Box>
                   <Typography
-                    variant="subtitle2"
-                    sx={{ color: '#64748b', mb: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block', mb: 0.5 }}
                   >
                     Total Pending IDs
                   </Typography>
@@ -1171,16 +1148,9 @@ const DashboardContent = () => {
                     {statistics.totalPendingIds}
                   </Typography>
                 </Box>
-                <Avatar
-                  sx={{
-                    bgcolor: '#fef3c7',
-                    color: '#f59e0b',
-                    width: { xs: 40, sm: 48 },
-                    height: { xs: 40, sm: 48 },
-                  }}
-                >
-                  <IconifyIcon icon="mdi:printer-alert" sx={{ fontSize: { xs: 24, sm: 28 } }} />
-                </Avatar>
+                <Box sx={{ bgcolor: '#fef3c7', p: 1, borderRadius: 2 }}>
+                  <IconifyIcon icon="mdi:printer-alert" fontSize={24} color="#f59e0b" />
+                </Box>
               </Stack>
             </CardContent>
           </Card>
@@ -1188,23 +1158,15 @@ const DashboardContent = () => {
 
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
-            sx={{
-              borderRadius: 3,
-              boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-              border: '1px solid #e9edf4',
-              transition: 'transform 0.2s, box-shadow 0.2s',
-              '&:hover': {
-                transform: 'translateY(-4px)',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
-              },
-            }}
+            variant="outlined"
+            sx={{ borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
           >
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Stack direction="row" alignItems="center" justifyContent="space-between">
                 <Box>
                   <Typography
-                    variant="subtitle2"
-                    sx={{ color: '#64748b', mb: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block', mb: 0.5 }}
                   >
                     Total Reprinted IDs
                   </Typography>
@@ -1219,16 +1181,9 @@ const DashboardContent = () => {
                     {statistics.totalReprintedIds}
                   </Typography>
                 </Box>
-                <Avatar
-                  sx={{
-                    bgcolor: '#ede9fe',
-                    color: '#8b5cf6',
-                    width: { xs: 40, sm: 48 },
-                    height: { xs: 40, sm: 48 },
-                  }}
-                >
-                  <IconifyIcon icon="mdi:refresh" sx={{ fontSize: { xs: 24, sm: 28 } }} />
-                </Avatar>
+                <Box sx={{ bgcolor: '#ede9fe', p: 1, borderRadius: 2 }}>
+                  <IconifyIcon icon="mdi:refresh" fontSize={24} color="#8b5cf6" />
+                </Box>
               </Stack>
             </CardContent>
           </Card>
@@ -1246,10 +1201,7 @@ const DashboardContent = () => {
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
           spacing={2}
-          sx={{
-            width: { xs: '100%', sm: 'auto' },
-            mb: { xs: 2, sm: 0 },
-          }}
+          sx={{ width: { xs: '100%', sm: 'auto' } }}
         >
           <TextField
             placeholder="Search..."
@@ -1260,19 +1212,11 @@ const DashboardContent = () => {
             fullWidth={isMobile}
             sx={{
               width: { xs: '100%', sm: 300 },
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 2,
-                backgroundColor: '#fff',
-                height: 40,
-              },
-              '& .MuiInputBase-input': {
-                py: 1,
-                px: 1.5,
-              },
+              '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: '#fff', height: 40 },
             }}
             InputProps={{
               startAdornment: (
-                <InputAdornment position="start" sx={{ ml: 0.5 }}>
+                <InputAdornment position="start">
                   <IconifyIcon icon="mdi:magnify" fontSize={20} color="#64748b" />
                 </InputAdornment>
               ),
@@ -1293,11 +1237,7 @@ const DashboardContent = () => {
             Filter Records
           </Button>
         </Stack>
-        <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          spacing={2}
-          sx={{ width: { xs: '100%', sm: 'auto' } }}
-        >
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
           {selectedRows.length > 0 && (
             <Button
               variant="outlined"
@@ -1319,11 +1259,7 @@ const DashboardContent = () => {
             startIcon={<IconifyIcon icon="mdi:file-excel" />}
             onClick={exportAllToExcel}
             fullWidth={isMobile}
-            sx={{
-              textTransform: 'none',
-              bgcolor: '#2563eb',
-              '&:hover': { bgcolor: '#1d4ed8' },
-            }}
+            sx={{ textTransform: 'none', bgcolor: '#2563eb', '&:hover': { bgcolor: '#1d4ed8' } }}
           >
             Export
           </Button>
@@ -1356,12 +1292,7 @@ const DashboardContent = () => {
           },
         ]}
         content={
-          <Stack
-            spacing={2.5}
-            direction="column"
-            sx={{ mt: 1, maxHeight: '70vh', overflowY: 'auto', pr: 1 }}
-          >
-            {/* a. School Code - Available for Super Admin */}
+          <Stack spacing={2.5} sx={{ mt: 1, maxHeight: '70vh', overflowY: 'auto', pr: 1 }}>
             <FormControl fullWidth size="small">
               <InputLabel>School Code</InputLabel>
               <Select
@@ -1378,7 +1309,6 @@ const DashboardContent = () => {
               </Select>
             </FormControl>
 
-            {/* b. Student ID No. */}
             <TextField
               fullWidth
               size="small"
@@ -1388,7 +1318,6 @@ const DashboardContent = () => {
               onChange={handleFilterChange('student_id')}
             />
 
-            {/* c. Student Type */}
             <FormControl fullWidth size="small">
               <InputLabel>Student Type</InputLabel>
               <Select
@@ -1402,7 +1331,6 @@ const DashboardContent = () => {
               </Select>
             </FormControl>
 
-            {/* d. Level - ✅ CHANGE 2: Dynamic based on selected school code */}
             <FormControl fullWidth size="small">
               <InputLabel>Level</InputLabel>
               <Select value={filterCriteria.level} label="Level" onChange={handleLevelChange}>
@@ -1415,7 +1343,6 @@ const DashboardContent = () => {
               </Select>
             </FormControl>
 
-            {/* e. Section/Course - ✅ CHANGE 3: Dynamic based on selected school code and level */}
             <FormControl fullWidth size="small">
               <InputLabel>Section/Course</InputLabel>
               <Select
@@ -1432,7 +1359,6 @@ const DashboardContent = () => {
               </Select>
             </FormControl>
 
-            {/* f. ID Info Status */}
             <FormControl fullWidth size="small">
               <InputLabel>ID Info Status</InputLabel>
               <Select
@@ -1446,7 +1372,6 @@ const DashboardContent = () => {
               </Select>
             </FormControl>
 
-            {/* g. Class Details Status */}
             <FormControl fullWidth size="small">
               <InputLabel>Class Details Status</InputLabel>
               <Select
@@ -1460,7 +1385,6 @@ const DashboardContent = () => {
               </Select>
             </FormControl>
 
-            {/* h. ID Printing Status */}
             <FormControl fullWidth size="small">
               <InputLabel>ID Printing Status</InputLabel>
               <Select
@@ -1474,7 +1398,6 @@ const DashboardContent = () => {
               </Select>
             </FormControl>
 
-            {/* i. ID Reprint Status */}
             <FormControl fullWidth size="small">
               <InputLabel>ID Reprint Status</InputLabel>
               <Select
@@ -1490,7 +1413,6 @@ const DashboardContent = () => {
 
             <Divider />
 
-            {/* j. Approved ID Info Date Range */}
             <Typography variant="subtitle2" sx={{ color: '#64748b', fontWeight: 500 }}>
               Approved ID Info Date Range
             </Typography>
@@ -1515,7 +1437,6 @@ const DashboardContent = () => {
               />
             </Stack>
 
-            {/* k. Approved Class Details Date Range */}
             <Typography variant="subtitle2" sx={{ color: '#64748b', fontWeight: 500 }}>
               Approved Class Details Date Range
             </Typography>
@@ -1540,7 +1461,6 @@ const DashboardContent = () => {
               />
             </Stack>
 
-            {/* l. Enrollment Date Range */}
             <Typography variant="subtitle2" sx={{ color: '#64748b', fontWeight: 500 }}>
               Enrollment Date Range
             </Typography>
@@ -1571,11 +1491,7 @@ const DashboardContent = () => {
       {/* DataGrid */}
       <Paper
         elevation={0}
-        sx={{
-          borderRadius: 3,
-          border: '1px solid #e9edf4',
-          overflow: 'hidden',
-        }}
+        sx={{ borderRadius: 3, border: '1px solid #e9edf4', overflow: 'hidden' }}
       >
         <DataGrid
           rowHeight={64}
@@ -1584,9 +1500,7 @@ const DashboardContent = () => {
           pageSizeOptions={isMobile ? [5, 10, 25] : [10, 25, 50]}
           initialState={{
             pagination: { paginationModel: { pageSize: isMobile ? 5 : 10 } },
-            sorting: {
-              sortModel: [{ field: 'name_to_appear_on_id', sort: 'asc' }],
-            },
+            sorting: { sortModel: [{ field: 'name_to_appear_on_id', sort: 'asc' }] },
           }}
           checkboxSelection
           disableRowSelectionOnClick={false}
@@ -1597,28 +1511,17 @@ const DashboardContent = () => {
           }}
           sx={{
             border: 'none',
-            '& .MuiDataGrid-cell:focus': {
-              outline: 'none',
-            },
+            '& .MuiDataGrid-cell:focus': { outline: 'none' },
             '& .MuiDataGrid-columnHeaders': {
-              backgroundColor: '#f8fafc',
+              bgcolor: '#f8fafc',
               borderBottom: '1px solid #e9edf4',
-              minHeight: { xs: 48, sm: 56 },
             },
-            '& .MuiDataGrid-row': {
-              cursor: 'pointer',
-              '&:hover': {
-                backgroundColor: '#f5f5f5',
-              },
-            },
-            '& .MuiDataGrid-cell': {
-              fontSize: { xs: '0.75rem', sm: '0.875rem' },
-            },
+            '& .MuiDataGrid-row': { cursor: 'pointer', '&:hover': { bgcolor: '#f5f5f5' } },
           }}
         />
       </Paper>
 
-      {/* Student Details Modal - ✅ CHANGE 1: Added Name to Appear on ID Card under ID Application Status */}
+      {/* Student Details Modal */}
       <Dialog
         open={modalOpen}
         onClose={handleCloseModal}
@@ -1628,8 +1531,8 @@ const DashboardContent = () => {
         disableBackdropClick={true}
         content={
           selectedStudent && (
-            <Stack spacing={3} direction="column">
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+            <Stack spacing={3}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Avatar
                   sx={{
                     width: { xs: 64, sm: 80 },
@@ -1641,75 +1544,97 @@ const DashboardContent = () => {
                 >
                   {selectedStudent.name_to_appear_on_id?.charAt(0) || 'S'}
                 </Avatar>
-                <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                <Box>
                   <Typography
                     variant="h5"
-                    sx={{ fontWeight: 600, fontSize: { xs: '1.25rem', sm: '1.5rem' }, mb: 0.5 }}
+                    sx={{ fontWeight: 600, fontSize: { xs: '1.25rem', sm: '1.5rem' } }}
                   >
-                    {selectedStudent.name_to_appear_on_id}
+                    {preserveCase(selectedStudent.name_to_appear_on_id)}
                   </Typography>
                 </Box>
               </Box>
 
               <Grid container spacing={2}>
+                {/* Personal Information */}
                 <Grid size={{ xs: 12 }}>
                   <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2563eb', mb: 1 }}>
                     A. Personal Information
                   </Typography>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     First Name
                   </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 500, mt: 0.5 }}>
-                    {selectedStudent.first_name}
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {formatName(selectedStudent.first_name)}
                   </Typography>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     Middle Initial
                   </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 500, mt: 0.5 }}>
-                    {selectedStudent.middle_initial || '—'}
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {formatMiddleInitial(selectedStudent.middle_initial)}
                   </Typography>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     Last Name
                   </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 500, mt: 0.5 }}>
-                    {selectedStudent.last_name}
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {formatName(selectedStudent.last_name)}
                   </Typography>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     Suffix Name
                   </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 500, mt: 0.5 }}>
-                    {selectedStudent.suffix || '—'}
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {formatName(selectedStudent.suffix)}
                   </Typography>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     Nickname
                   </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 500, mt: 0.5 }}>
-                    {selectedStudent.nick_name || '—'}
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {formatName(selectedStudent.nick_name)}
                   </Typography>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     LRN
                   </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 500, mt: 0.5 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
                     {selectedStudent.lrn || '—'}
                   </Typography>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     Date of Birth
                   </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 500, mt: 0.5 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
                     {selectedStudent.birth_date
                       ? new Date(selectedStudent.birth_date).toLocaleDateString('en-US', {
                           year: 'numeric',
@@ -1720,66 +1645,93 @@ const DashboardContent = () => {
                   </Typography>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     Gender
                   </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 500, mt: 0.5 }}>
-                    {selectedStudent.gender || '—'}
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {selectedStudent.gender ? capitalizeFirstLetter(selectedStudent.gender) : '—'}
                   </Typography>
                 </Grid>
+
                 <Grid size={{ xs: 12 }}>
                   <Divider sx={{ borderColor: '#e9edf4', my: 1 }} />
                 </Grid>
+
+                {/* School Information */}
                 <Grid size={{ xs: 12 }}>
                   <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2563eb', mb: 1 }}>
                     B. School Information
                   </Typography>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     Level
                   </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 500, mt: 0.5 }}>
-                    {selectedStudent.level || '—'}
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {preserveCase(selectedStudent.level)}
                   </Typography>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     Section/Course
                   </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 500, mt: 0.5 }}>
-                    {selectedStudent.section_course || '—'}
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {preserveCase(selectedStudent.section_course)}
                   </Typography>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     Student Type
                   </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 500, mt: 0.5 }}>
-                    {selectedStudent.student_type === 'new' ? 'New Student' : 'Old Student'}
-                  </Typography>
+                  <Chip
+                    label={formatStudentType(selectedStudent.student_type)}
+                    color={getStudentTypeColor(selectedStudent.student_type) as any}
+                    size="small"
+                    sx={{ fontWeight: 500, mt: 0.5 }}
+                  />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     ESC Voucher
                   </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 500, mt: 0.5 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
                     {selectedStudent.esc_voucher_recipient ? 'Yes' : 'No'}
                   </Typography>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     ESC Number
                   </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 500, mt: 0.5 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
                     {selectedStudent.esc_number || '—'}
                   </Typography>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     Enrollment Date
                   </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 500, mt: 0.5 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
                     {new Date(selectedStudent.created_at).toLocaleDateString('en-US', {
                       year: 'numeric',
                       month: 'long',
@@ -1787,41 +1739,50 @@ const DashboardContent = () => {
                     })}
                   </Typography>
                 </Grid>
+
                 <Grid size={{ xs: 12 }}>
                   <Divider sx={{ borderColor: '#e9edf4', my: 1 }} />
                 </Grid>
+
+                {/* ID Application Status */}
                 <Grid size={{ xs: 12 }}>
                   <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2563eb', mb: 1 }}>
                     C. ID Application Status
                   </Typography>
                 </Grid>
-                {/* ✅ CHANGE 1: Name to Appear on ID Card - Added here */}
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     Name to Appear on ID Card
                   </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 500, mt: 0.5 }}>
-                    {selectedStudent.name_to_appear_on_id || '—'}
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {preserveCase(selectedStudent.name_to_appear_on_id)}
                   </Typography>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     ID Info Status
                   </Typography>
-                  <div>
-                    <Chip
-                      label={selectedStudent.id_info_status || '—'}
-                      color={getStatusColor(selectedStudent.id_info_status) as any}
-                      size="small"
-                      sx={{ fontWeight: 500, mt: 0.5 }}
-                    />
-                  </div>
+                  <Chip
+                    label={formatStatus(selectedStudent.id_info_status)}
+                    color={getStatusColor(selectedStudent.id_info_status) as any}
+                    size="small"
+                    sx={{ fontWeight: 500, mt: 0.5 }}
+                  />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     ID Info Approval Date
                   </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 500, mt: 0.5 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
                     {selectedStudent.id_info_approval_date
                       ? new Date(selectedStudent.id_info_approval_date).toLocaleDateString(
                           'en-US',
@@ -1835,23 +1796,27 @@ const DashboardContent = () => {
                   </Typography>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     Class Details Status
                   </Typography>
-                  <div>
-                    <Chip
-                      label={selectedStudent.class_details_status || '—'}
-                      color={getStatusColor(selectedStudent.class_details_status) as any}
-                      size="small"
-                      sx={{ fontWeight: 500, mt: 0.5 }}
-                    />
-                  </div>
+                  <Chip
+                    label={formatStatus(selectedStudent.class_details_status)}
+                    color={getStatusColor(selectedStudent.class_details_status) as any}
+                    size="small"
+                    sx={{ fontWeight: 500, mt: 0.5 }}
+                  />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     Class Details Approval Date
                   </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 500, mt: 0.5 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
                     {selectedStudent.class_details_approval_date
                       ? new Date(selectedStudent.class_details_approval_date).toLocaleDateString(
                           'en-US',
@@ -1865,23 +1830,27 @@ const DashboardContent = () => {
                   </Typography>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     ID Print Status
                   </Typography>
-                  <div>
-                    <Chip
-                      label={selectedStudent.id_print_status || '—'}
-                      color={getStatusColor(selectedStudent.id_print_status) as any}
-                      size="small"
-                      sx={{ fontWeight: 500, mt: 0.5 }}
-                    />
-                  </div>
+                  <Chip
+                    label={formatStatus(selectedStudent.id_print_status)}
+                    color={getStatusColor(selectedStudent.id_print_status) as any}
+                    size="small"
+                    sx={{ fontWeight: 500, mt: 0.5 }}
+                  />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     ID Print Date
                   </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 500, mt: 0.5 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
                     {selectedStudent.id_print_date
                       ? new Date(selectedStudent.id_print_date).toLocaleDateString('en-US', {
                           year: 'numeric',
@@ -1891,51 +1860,69 @@ const DashboardContent = () => {
                       : '—'}
                   </Typography>
                 </Grid>
+
                 <Grid size={{ xs: 12 }}>
                   <Divider sx={{ borderColor: '#e9edf4', my: 1 }} />
                 </Grid>
+
+                {/* Parent/Guardian Information */}
                 <Grid size={{ xs: 12 }}>
                   <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2563eb', mb: 1 }}>
                     D. Parent/Guardian Information
                   </Typography>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     Parent/Guardian Name
                   </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 500, mt: 0.5 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
                     {selectedStudent.parent_full_name || 'Not provided'}
                   </Typography>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     Parent/Guardian Email
                   </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 500, mt: 0.5 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
                     {selectedStudent.parent_email || 'Not provided'}
                   </Typography>
                 </Grid>
+
                 <Grid size={{ xs: 12 }}>
                   <Divider sx={{ borderColor: '#e9edf4', my: 1 }} />
                 </Grid>
+
+                {/* Address & Contact Information */}
                 <Grid size={{ xs: 12 }}>
                   <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2563eb', mb: 1 }}>
                     E. Address & Contact Information
                   </Typography>
                 </Grid>
                 <Grid size={{ xs: 12 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     Residential Address
                   </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 500, mt: 0.5 }}>
-                    {selectedStudent.present_address || 'Not provided'}
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {preserveCase(selectedStudent.present_address) || 'Not provided'}
                   </Typography>
                 </Grid>
                 <Grid size={{ xs: 12 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     Emergency Contact Person and Number
                   </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 500, mt: 0.5 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
                     {selectedStudent.emergency_contact || 'Not provided'}
                   </Typography>
                 </Grid>
