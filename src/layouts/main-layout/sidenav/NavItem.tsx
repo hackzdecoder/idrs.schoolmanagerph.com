@@ -1,19 +1,25 @@
 import { MouseEvent, useEffect, useMemo, useState } from 'react';
-import { NavLink, useLocation } from 'react-router';
+import { NavLink, useLocation, useNavigate } from 'react-router';
+// ✅ Add useNavigate
 import { Box, Collapse } from '@mui/material';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon, { listItemIconClasses } from '@mui/material/ListItemIcon';
 import ListItemText, { listItemTextClasses } from '@mui/material/ListItemText';
+import useRouteApiSetup from 'hooks/useRouteApiSetup';
 import { cssVarRgba } from 'lib/utils';
 import { useBreakpoints } from 'providers/BreakpointsProvider';
 import { useSettingsContext } from 'providers/SettingsProvider';
 import { COLLAPSE_NAVBAR } from 'reducers/SettingsReducer';
+// ✅ Add this
+import paths from 'routes/paths';
 import { SubMenuItem } from 'routes/sitemap';
 import IconifyIcon from 'components/base/IconifyIcon';
 import { useNavContext } from '../NavProvider';
 import NavItemPopper from './NavItemPopper';
+
+// ✅ Add this
 
 interface NavItemProps {
   item: SubMenuItem;
@@ -29,6 +35,8 @@ const NavItem = ({ item, level }: NavItemProps) => {
   const [anchorEl, setAnchorEl] = useState<HTMLDivElement | null>(null);
   const [openPopperMenu, setOpenPopperMenu] = useState(false);
   const { pathname } = useLocation();
+  const navigate = useNavigate(); // ✅ Add navigate
+  const { post } = useRouteApiSetup(); // ✅ Add API hook
   const { setOpenItems, openItems, isNestedItemOpen } = useNavContext();
   const { currentBreakpoint, up } = useBreakpoints();
   const upLg = up('lg');
@@ -39,6 +47,32 @@ const NavItem = ({ item, level }: NavItemProps) => {
   } = useSettingsContext();
 
   const hasNestedItems = useMemo(() => Object.prototype.hasOwnProperty.call(item, 'items'), [item]);
+
+  // ✅ Add logout handler
+  const handleLogout = async () => {
+    try {
+      await post('/logout');
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      // Clear all localStorage items
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('access_expires_at');
+      localStorage.removeItem('student_info');
+      localStorage.removeItem('existing_student_data');
+      localStorage.removeItem('existing_student_school_code');
+      localStorage.removeItem('first_user_username');
+      localStorage.removeItem('first_user_fullname');
+      localStorage.removeItem('first_user_token');
+      localStorage.removeItem('first_user_otp_verified');
+      localStorage.removeItem('first_user_email');
+      localStorage.removeItem('user_school_code');
+
+      // Navigate to login page
+      navigate(paths.login, { replace: true });
+    }
+  };
 
   const expandIcon = (
     <IconifyIcon
@@ -65,6 +99,12 @@ const NavItem = ({ item, level }: NavItemProps) => {
   );
 
   const toggleCollapseItem = () => {
+    // ✅ Handle logout special case
+    if (item.name === 'Logout') {
+      handleLogout();
+      return;
+    }
+
     if (!hasNestedItems) {
       if (openNavbarDrawer) {
         handleDrawerToggle();
@@ -111,8 +151,8 @@ const NavItem = ({ item, level }: NavItemProps) => {
     <>
       <ListItem key={item.pathName} disablePadding>
         <ListItemButton
-          component={item.items ? 'div' : NavLink}
-          to={item.path}
+          component={item.items ? 'div' : item.name === 'Logout' ? 'div' : NavLink}
+          to={item.name === 'Logout' ? undefined : item.path}
           onClick={toggleCollapseItem}
           target={item.target ? item.target : undefined}
           onMouseEnter={sidenavCollapsed ? handleMouseEnter : undefined}

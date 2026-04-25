@@ -82,13 +82,19 @@ const sitemap: MenuItem[] = [
         roles: ['Super Admin', 'Admin', 'Faculty'],
       },
       {
-        // name: 'Profile',
         name: 'ID Registration',
         path: paths.profile,
         pathName: 'profile',
         icon: 'material-symbols:account-box-outline',
         active: true,
         roles: ['Student'],
+      },
+      {
+        name: 'Logout',
+        pathName: 'logout',
+        icon: 'material-symbols:power-settings-new-rounded', // ✅ power-switch icon
+        active: true,
+        roles: ['Super Admin', 'Admin', 'Faculty', 'Student'],
       },
     ],
   },

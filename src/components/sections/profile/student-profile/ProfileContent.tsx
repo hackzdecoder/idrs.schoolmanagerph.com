@@ -75,10 +75,8 @@ const formatMiddleInitialOnBlur = (value: string): string => {
   let formatted = value.trim();
   if (formatted.length === 0) return '';
 
-  // Capitalize first letter, preserve the rest exactly as typed
   formatted = formatted.charAt(0).toUpperCase() + formatted.slice(1);
 
-  // Ensure at least one period exists
   if (!formatted.includes('.')) {
     formatted += '.';
   }
@@ -144,6 +142,25 @@ const isValidPhoneNumber = (phoneNumber: string): boolean => {
   return /^\d{11}$/.test(phoneNumber);
 };
 
+// Format date from API to YYYY-MM-DD (fix timezone issue)
+const formatDate = (dateString: string | null | undefined): string => {
+  if (!dateString) return '';
+
+  // Handle ISO format with timezone (e.g., 2005-10-30T16:00:00.000000Z)
+  if (dateString.includes('T')) {
+    const date = new Date(dateString);
+    if (!isNaN(date.getTime())) {
+      const year = date.getUTCFullYear();
+      const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(date.getUTCDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+  }
+
+  // If already in YYYY-MM-DD format or fallback
+  return dateString.substring(0, 10);
+};
+
 const ProfileContent = () => {
   const { get, post } = useRouteApiSetup();
 
@@ -158,7 +175,6 @@ const ProfileContent = () => {
   const [smsCredentialsExist, setSmsCredentialsExist] = useState(false);
   const [parentDataFetched, setParentDataFetched] = useState(false);
 
-  // State for password visibility toggle
   const [showPassword, setShowPassword] = useState(false);
   const [showModalPassword, setShowModalPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string>('');
@@ -197,7 +213,6 @@ const ProfileContent = () => {
 
         const parsedUser = JSON.parse(userStr);
 
-        // Check SMS credentials from stored user data
         if (parsedUser.sms_credentials_exist !== undefined) {
           setSmsCredentialsExist(parsedUser.sms_credentials_exist);
         }
@@ -231,14 +246,13 @@ const ProfileContent = () => {
                 setIsApproved(true);
               }
 
-              // Check sms_app_credentials from profile data
               if (profileResponse.data.sms_app_credentials === 'yes') {
                 setSmsCredentialsExist(true);
               }
 
               let formattedBirthDate = '';
               if (profileResponse.data.birth_date) {
-                formattedBirthDate = profileResponse.data.birth_date.substring(0, 10);
+                formattedBirthDate = formatDate(profileResponse.data.birth_date);
               }
 
               const firstName = profileResponse.data.first_name || '';
@@ -284,10 +298,8 @@ const ProfileContent = () => {
     fetchUserProfile();
   }, [get]);
 
-  // ✅ Fetch existing parent data when SMS credentials exist (for 2nd+ submissions)
   useEffect(() => {
     const fetchExistingParentData = async () => {
-      // Reset parent data fetched flag when student changes
       if (!profileData?.emergency_contact_number || !profileData?.school_code) {
         setParentDataFetched(false);
         return;
@@ -300,11 +312,6 @@ const ProfileContent = () => {
         !parentDataFetched
       ) {
         try {
-          console.log('Fetching existing parent data for student:', {
-            emergency_contact_number: profileData.emergency_contact_number,
-            school_code: profileData.school_code,
-          });
-
           const response = await get<{
             success: boolean;
             data: {
@@ -319,8 +326,6 @@ const ProfileContent = () => {
             },
           });
 
-          console.log('Parent data API response:', response);
-
           if (response.success && response.data) {
             setEditableData((prev) => ({
               ...prev,
@@ -329,7 +334,6 @@ const ProfileContent = () => {
               parent_email: response.data.parent_email || '',
             }));
             setParentDataFetched(true);
-            console.log('Parent fields pre-filled successfully');
           }
         } catch (error) {
           console.error('Failed to fetch existing parent data:', error);
@@ -351,7 +355,6 @@ const ProfileContent = () => {
 
     let processedValue = value;
 
-    // Capitalize first letter only, preserve rest (no forced lowercase)
     if (
       ['first_name', 'emergency_contact_person', 'parent_first_name', 'parent_surname'].includes(
         field,
@@ -362,12 +365,10 @@ const ProfileContent = () => {
       }
     }
 
-    // Middle Initial - NO automatic formatting while typing
     if (field === 'middle_initial') {
       processedValue = value;
     }
 
-    // Other name fields - capitalize first letter of each word
     if (['surname', 'nick_name'].includes(field)) {
       processedValue = value
         .split(' ')
@@ -375,7 +376,6 @@ const ProfileContent = () => {
         .join(' ');
     }
 
-    // Only allow numbers for contact number and restrict to 11 digits
     if (field === 'emergency_contact_number') {
       processedValue = value.replace(/[^0-9]/g, '');
       if (processedValue.length > 11) {
@@ -383,7 +383,6 @@ const ProfileContent = () => {
       }
     }
 
-    // Validate password on change
     if (field === 'password') {
       processedValue = value;
       if (value) {
@@ -397,7 +396,6 @@ const ProfileContent = () => {
     setEditableData((prev) => {
       const newData = { ...prev, [field]: processedValue };
 
-      // Auto-generate Name to Appear on ID Card with exact middle initial
       if (field === 'first_name' || field === 'middle_initial' || field === 'surname') {
         const firstName = field === 'first_name' ? processedValue : prev.first_name;
         const middleInitial = field === 'middle_initial' ? processedValue : prev.middle_initial;
@@ -411,27 +409,22 @@ const ProfileContent = () => {
     });
   };
 
-  // Format middle initial when field loses focus
   const handleMiddleInitialBlur = () => {
     const formatted = formatMiddleInitialOnBlur(editableData.middle_initial);
     if (formatted !== editableData.middle_initial) {
       setEditableData((prev) => {
         const newData = { ...prev, middle_initial: formatted };
-
         const generatedName = generateNameToAppearOnId(prev.first_name, formatted, prev.surname);
         newData.name_to_appear_on_id = generatedName;
-
         return newData;
       });
     }
   };
 
-  // Toggle password visibility in form
   const handleTogglePasswordVisibility = () => {
     setShowPassword((prev) => !prev);
   };
 
-  // Toggle password visibility in modal
   const handleToggleModalPasswordVisibility = () => {
     setShowModalPassword((prev) => !prev);
   };
@@ -449,7 +442,6 @@ const ProfileContent = () => {
       { field: 'emergency_contact_number', message: 'Emergency Contact Number is required' },
     ];
 
-    // Only require parent/guardian fields if SMS credentials don't exist
     if (!smsCredentialsExist) {
       requiredFields.push(
         { field: 'parent_first_name', message: 'Parent/Guardian First Name is required' },
@@ -471,7 +463,6 @@ const ProfileContent = () => {
       }
     }
 
-    // Only validate password strength if password is provided and credentials don't exist
     if (!smsCredentialsExist && editableData.password) {
       const passwordValidation = validatePasswordStrength(editableData.password);
       if (!passwordValidation.isValid) {
@@ -540,7 +531,6 @@ const ProfileContent = () => {
         esc_number: editableData.esc_number || '',
       };
 
-      // Only include parent fields and password if SMS credentials don't exist
       if (!smsCredentialsExist) {
         updateData.parent_first_name = editableData.parent_first_name || '';
         updateData.parent_surname = editableData.parent_surname || '';
@@ -624,7 +614,6 @@ const ProfileContent = () => {
       >
         <Box component="form">
           <Grid container spacing={{ xs: 2, sm: 3 }}>
-            {/* Header */}
             <Grid size={{ xs: 12 }}>
               <Stack
                 direction={{ xs: 'column', sm: 'row' }}
@@ -650,7 +639,6 @@ const ProfileContent = () => {
               </Stack>
             </Grid>
 
-            {/* Avatar Section */}
             <Grid size={{ xs: 12 }}>
               <Stack sx={{ alignItems: 'center', gap: 1 }}>
                 <Avatar
@@ -686,7 +674,6 @@ const ProfileContent = () => {
 
             <Divider sx={{ my: 0 }} />
 
-            {/* A. Personal Information */}
             <Grid size={{ xs: 12 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2563eb', mb: 2 }}>
                 A. Personal Information
@@ -799,7 +786,6 @@ const ProfileContent = () => {
 
             <Divider sx={{ my: 2 }} />
 
-            {/* B. Additional Information */}
             <Grid size={{ xs: 12 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2563eb', mb: 2 }}>
                 B. Additional Information
@@ -861,7 +847,6 @@ const ProfileContent = () => {
 
             <Divider sx={{ my: 2 }} />
 
-            {/* C. Mobile App / Web App Registration */}
             <Grid size={{ xs: 12 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2563eb', mb: 2 }}>
                 C. Mobile App / Web App Registration
@@ -958,7 +943,6 @@ const ProfileContent = () => {
 
             <Divider sx={{ my: 2 }} />
 
-            {/* D. School Information - Not Editable */}
             <Grid size={{ xs: 12 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2563eb', mb: 2 }}>
                 D. School Information
@@ -1024,7 +1008,6 @@ const ProfileContent = () => {
               </Grid>
             )}
 
-            {/* Submit Button */}
             <Grid size={{ xs: 12 }}>
               <Stack
                 direction={{ xs: 'column', sm: 'row' }}
@@ -1053,7 +1036,6 @@ const ProfileContent = () => {
         </Box>
       </Paper>
 
-      {/* Confirmation Modal - Using Custom Dialog Component */}
       <Dialog
         open={confirmModalOpen}
         onClose={handleCloseModal}
@@ -1086,7 +1068,6 @@ const ProfileContent = () => {
               submitting.
             </Typography>
 
-            {/* A. Personal Information Summary */}
             <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#2563eb' }}>
               A. Personal Information
             </Typography>
@@ -1157,7 +1138,6 @@ const ProfileContent = () => {
               </Grid>
             </Grid>
 
-            {/* B. Additional Information Summary */}
             <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#2563eb' }}>
               B. Additional Information
             </Typography>
@@ -1188,7 +1168,6 @@ const ProfileContent = () => {
               </Grid>
             </Grid>
 
-            {/* C. Parent/Guardian Information Summary */}
             <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#2563eb' }}>
               C. Parent/Guardian Information
             </Typography>
@@ -1240,7 +1219,6 @@ const ProfileContent = () => {
               </Grid>
             </Grid>
 
-            {/* D. School Information Summary */}
             <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#2563eb' }}>
               D. School Information
             </Typography>
