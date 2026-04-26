@@ -1535,7 +1535,7 @@ const DashboardContent = () => {
         disableBackdropClick={true}
         content={
           selectedStudent && (
-            <Stack spacing={3}>
+            <Stack spacing={3} direction="column">
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Avatar
                   sx={{
