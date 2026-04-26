@@ -8,7 +8,6 @@ import {
   Chip,
   Divider,
   FormControl,
-  IconButton,
   InputAdornment,
   InputLabel,
   MenuItem,
@@ -17,7 +16,6 @@ import {
   SelectChangeEvent,
   Stack,
   TextField,
-  Tooltip,
   Typography,
   useMediaQuery,
   useTheme,
@@ -25,7 +23,6 @@ import {
 import Grid from '@mui/material/Grid';
 import { DataGrid, GridColDef, GridRenderCellParams, GridRowParams } from '@mui/x-data-grid';
 import useRouteApiSetup from 'hooks/useRouteApiSetup';
-import Swal from 'sweetalert2';
 import IconifyIcon from 'components/base/IconifyIcon';
 import { Dialog } from 'components/dialogs/Dialog';
 import PageLoader from 'components/loading/PageLoader';
@@ -57,7 +54,6 @@ interface StudentInformation {
   emergency_contact: string | null;
   created_at: string;
   name_to_appear_on_id: string;
-  // ✅ ADD THESE MISSING FIELDS
   id_info_approval_date?: string | null;
   class_details_approval_date?: string | null;
   id_print_date?: string | null;
@@ -146,9 +142,6 @@ const DashboardContent = () => {
   const [loading, setLoading] = useState(true);
   const [selectedStudent, setSelectedStudent] = useState<StudentRecord | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [approveModalOpen, setApproveModalOpen] = useState(false);
-  const [studentToApprove, setStudentToApprove] = useState<StudentRecord | null>(null);
-  const [isCheckboxChecked, setIsCheckboxChecked] = useState(false);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [filterLoading, setFilterLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
@@ -284,6 +277,9 @@ const DashboardContent = () => {
           emergency_contact: student.emergency_contact,
           present_address: student.residential_address || undefined,
           account_status: student.account_status || 'active',
+          id_info_approval_date: student.id_info_approval_date || null,
+          class_details_approval_date: student.class_details_approval_date || null,
+          id_print_date: student.id_print_date || null,
         }));
         setStudents(studentRecords);
         setSearchText('');
@@ -338,30 +334,6 @@ const DashboardContent = () => {
     (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | SelectChangeEvent) => {
       setFilterCriteria({ ...filterCriteria, [field]: event.target.value });
     };
-
-  const handleApproveClick = (student: StudentRecord) => {
-    setStudentToApprove(student);
-    setIsCheckboxChecked(false);
-    setApproveModalOpen(true);
-  };
-
-  const handleConfirmApprove = () => {
-    if (!isCheckboxChecked) return;
-    setApproveModalOpen(false);
-    setIsCheckboxChecked(false);
-    Swal.fire({
-      icon: 'success',
-      title: 'Approved!',
-      text: `Student ${studentToApprove?.name_to_appear_on_id} has been approved successfully.`,
-      confirmButtonColor: '#2563eb',
-    });
-  };
-
-  const handleCloseApproveModal = () => {
-    setApproveModalOpen(false);
-    setStudentToApprove(null);
-    setIsCheckboxChecked(false);
-  };
 
   const columns: GridColDef[] = [
     {
@@ -500,38 +472,13 @@ const DashboardContent = () => {
         });
       },
     },
-    {
-      field: 'actions',
-      headerName: 'Actions',
-      width: 100,
-      sortable: false,
-      renderCell: (params: GridRenderCellParams) => (
-        <Tooltip title="Approve Student">
-          <IconButton
-            onClick={(e) => {
-              e.stopPropagation();
-              handleApproveClick(params.row);
-            }}
-            sx={{
-              bgcolor: '#22c55e',
-              color: 'white',
-              '&:hover': { bgcolor: '#16a34a' },
-              width: 36,
-              height: 36,
-            }}
-          >
-            <IconifyIcon icon="mdi:check" fontSize={20} />
-          </IconButton>
-        </Tooltip>
-      ),
-    },
   ];
 
   if (loading) return <PageLoader />;
 
   return (
     <Box sx={{ p: { xs: 2, sm: 3 }, width: '100%' }}>
-      {/* Statistics Cards - cursor default */}
+      {/* Statistics Cards */}
       <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: { xs: 3, sm: 4 } }}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
@@ -539,7 +486,7 @@ const DashboardContent = () => {
               borderRadius: 3,
               boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
               border: '1px solid #e9edf4',
-              cursor: 'default', // ✅ Fix: default cursor on cards
+              cursor: 'default',
             }}
           >
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
@@ -565,7 +512,7 @@ const DashboardContent = () => {
               borderRadius: 3,
               boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
               border: '1px solid #e9edf4',
-              cursor: 'default', // ✅ Fix: default cursor on cards
+              cursor: 'default',
             }}
           >
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
@@ -591,7 +538,7 @@ const DashboardContent = () => {
               borderRadius: 3,
               boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
               border: '1px solid #e9edf4',
-              cursor: 'default', // ✅ Fix: default cursor on cards
+              cursor: 'default',
             }}
           >
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
@@ -617,7 +564,7 @@ const DashboardContent = () => {
               borderRadius: 3,
               boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
               border: '1px solid #e9edf4',
-              cursor: 'default', // ✅ Fix: default cursor on cards
+              cursor: 'default',
             }}
           >
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
@@ -823,7 +770,7 @@ const DashboardContent = () => {
         }
       />
 
-      {/* DataGrid - with pointer cursor on rows */}
+      {/* DataGrid */}
       <Paper
         elevation={0}
         sx={{
@@ -854,7 +801,7 @@ const DashboardContent = () => {
               minHeight: { xs: 48, sm: 56 },
             },
             '& .MuiDataGrid-row': {
-              cursor: 'pointer', // ✅ Fix: pointer cursor on table rows
+              cursor: 'pointer',
               '&:hover': {
                 backgroundColor: '#f5f5f5',
               },
@@ -866,7 +813,7 @@ const DashboardContent = () => {
         />
       </Paper>
 
-      {/* Student Details Modal - with disableBackdropClick */}
+      {/* Student Details Modal - View Only */}
       <Dialog
         open={modalOpen}
         onClose={handleCloseModal}
@@ -998,144 +945,6 @@ const DashboardContent = () => {
                   <Typography>{selectedStudent.emergency_contact || 'Not provided'}</Typography>
                 </Grid>
               </Grid>
-            </Stack>
-          )
-        }
-      />
-
-      {/* Approve Confirmation Modal - with disableBackdropClick */}
-      <Dialog
-        open={approveModalOpen}
-        onClose={handleCloseApproveModal}
-        title="Confirm Student Approval"
-        maxWidth={600}
-        hideCloseButton={false}
-        disableBackdropClick={true}
-        disableEscapeKeyDown={true}
-        actions={[
-          {
-            label: 'Cancel',
-            onClick: handleCloseApproveModal,
-            color: 'secondary',
-            variant: 'outlined',
-          },
-          {
-            label: 'Approve',
-            onClick: handleConfirmApprove,
-            color: 'success',
-            variant: 'contained',
-            disabled: !isCheckboxChecked,
-            startIcon: 'mdi:check-circle',
-          },
-        ]}
-        content={
-          studentToApprove && (
-            <Stack spacing={3} direction="column">
-              <Typography variant="body1" sx={{ color: '#1e293b', fontWeight: 600 }}>
-                Please review the student information below before approving.
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Avatar sx={{ width: 56, height: 56, bgcolor: '#2563eb' }}>
-                  {studentToApprove.name_to_appear_on_id?.charAt(0) || 'S'}
-                </Avatar>
-                <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                    {studentToApprove.name_to_appear_on_id}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: '#64748b' }}>
-                    Student ID: {studentToApprove.student_id}
-                  </Typography>
-                </Box>
-              </Box>
-              <Grid container spacing={2}>
-                <Grid size={12}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#2563eb' }}>
-                    Personal Information
-                  </Typography>
-                </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
-                    First Name
-                  </Typography>
-                  <Typography>{studentToApprove.first_name}</Typography>
-                </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
-                    Middle Initial
-                  </Typography>
-                  <Typography>{studentToApprove.middle_initial || '—'}</Typography>
-                </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
-                    Last Name
-                  </Typography>
-                  <Typography>{studentToApprove.last_name}</Typography>
-                </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
-                    Suffix
-                  </Typography>
-                  <Typography>{studentToApprove.suffix || '—'}</Typography>
-                </Grid>
-                <Grid size={12}>
-                  <Divider />
-                </Grid>
-                <Grid size={12}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#2563eb' }}>
-                    School Information
-                  </Typography>
-                </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
-                    Level
-                  </Typography>
-                  <Typography>{studentToApprove.level || '—'}</Typography>
-                </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
-                    Section/Course
-                  </Typography>
-                  <Typography>{studentToApprove.section_course || '—'}</Typography>
-                </Grid>
-                <Grid size={12}>
-                  <Divider />
-                </Grid>
-                <Grid size={12}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#2563eb' }}>
-                    Parent/Guardian Information
-                  </Typography>
-                </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
-                    Parent/Guardian Name
-                  </Typography>
-                  <Typography>{studentToApprove.parent_full_name || 'Not provided'}</Typography>
-                </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
-                    Parent/Guardian Email
-                  </Typography>
-                  <Typography>{studentToApprove.parent_email || 'Not provided'}</Typography>
-                </Grid>
-              </Grid>
-              <Stack direction="row" alignItems="center" spacing={1}>
-                <input
-                  type="checkbox"
-                  id="approveConfirm"
-                  checked={isCheckboxChecked}
-                  onChange={(e) => setIsCheckboxChecked(e.target.checked)}
-                  style={{ width: 18, height: 18, cursor: 'pointer' }}
-                />
-                <Typography
-                  variant="body2"
-                  component="label"
-                  htmlFor="approveConfirm"
-                  sx={{ cursor: 'pointer' }}
-                >
-                  I confirm that this student's information is correct and I approve this
-                  registration.
-                </Typography>
-              </Stack>
             </Stack>
           )
         }

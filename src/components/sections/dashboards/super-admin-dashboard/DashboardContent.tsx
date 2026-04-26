@@ -1292,7 +1292,11 @@ const DashboardContent = () => {
           },
         ]}
         content={
-          <Stack spacing={2.5} sx={{ mt: 1, maxHeight: '70vh', overflowY: 'auto', pr: 1 }}>
+          <Stack
+            spacing={2.5}
+            direction="column"
+            sx={{ mt: 1, maxHeight: '70vh', overflowY: 'auto', pr: 1 }}
+          >
             <FormControl fullWidth size="small">
               <InputLabel>School Code</InputLabel>
               <Select
