@@ -57,6 +57,10 @@ interface StudentInformation {
   emergency_contact: string | null;
   created_at: string;
   name_to_appear_on_id: string;
+  // ✅ ADD THESE MISSING FIELDS
+  id_info_approval_date?: string | null;
+  class_details_approval_date?: string | null;
+  id_print_date?: string | null;
 }
 
 interface StudentRecord {
@@ -83,6 +87,9 @@ interface StudentRecord {
   emergency_contact?: string | null;
   present_address?: string;
   account_status: string;
+  id_info_approval_date?: string | null;
+  class_details_approval_date?: string | null;
+  id_print_date?: string | null;
 }
 
 interface FilterCriteria {
@@ -211,6 +218,9 @@ const DashboardContent = () => {
           emergency_contact: student.emergency_contact,
           present_address: student.residential_address || undefined,
           account_status: student.account_status || 'active',
+          id_info_approval_date: student.id_info_approval_date || null,
+          class_details_approval_date: student.class_details_approval_date || null,
+          id_print_date: student.id_print_date || null,
         }));
         setStudents(studentRecords);
       } else {
@@ -367,20 +377,38 @@ const DashboardContent = () => {
     {
       field: 'name_to_appear_on_id',
       headerName: 'Student Name',
-      width: 220,
+      width: 200,
       renderCell: (params: GridRenderCellParams) => (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: '0.875rem' }}>
+          <Avatar sx={{ width: 32, height: 32, bgcolor: '#2563eb', fontSize: '0.875rem' }}>
             {params.row.name_to_appear_on_id?.charAt(0) || 'S'}
           </Avatar>
-          {params.row.name_to_appear_on_id}
+          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+            {params.row.name_to_appear_on_id}
+          </Typography>
         </Box>
+      ),
+    },
+    {
+      field: 'level',
+      headerName: 'Level',
+      width: 100,
+      renderCell: (params: GridRenderCellParams) => (
+        <Typography variant="body2">{params.row.level || '—'}</Typography>
+      ),
+    },
+    {
+      field: 'section_course',
+      headerName: 'Section/Course',
+      width: 140,
+      renderCell: (params: GridRenderCellParams) => (
+        <Typography variant="body2">{params.row.section_course || '—'}</Typography>
       ),
     },
     {
       field: 'created_at',
       headerName: 'Enrollment Date',
-      width: 150,
+      width: 140,
       renderCell: (params: GridRenderCellParams) => {
         const date = new Date(params.row.created_at);
         return date.toLocaleDateString('en-US', {
@@ -393,7 +421,7 @@ const DashboardContent = () => {
     {
       field: 'id_info_status',
       headerName: 'ID Info Status',
-      width: 140,
+      width: 130,
       renderCell: (params: GridRenderCellParams) => (
         <Chip
           label={params.row.id_info_status}
@@ -402,6 +430,20 @@ const DashboardContent = () => {
           sx={{ fontWeight: 500 }}
         />
       ),
+    },
+    {
+      field: 'id_info_approval_date',
+      headerName: 'ID Info Approval Date',
+      width: 160,
+      renderCell: (params: GridRenderCellParams) => {
+        if (!params.row.id_info_approval_date) return <Typography variant="body2">—</Typography>;
+        const date = new Date(params.row.id_info_approval_date);
+        return date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+        });
+      },
     },
     {
       field: 'class_details_status',
@@ -417,9 +459,24 @@ const DashboardContent = () => {
       ),
     },
     {
+      field: 'class_details_approval_date',
+      headerName: 'Class Details Approval Date',
+      width: 180,
+      renderCell: (params: GridRenderCellParams) => {
+        if (!params.row.class_details_approval_date)
+          return <Typography variant="body2">—</Typography>;
+        const date = new Date(params.row.class_details_approval_date);
+        return date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+        });
+      },
+    },
+    {
       field: 'id_print_status',
-      headerName: 'ID Printing Status',
-      width: 150,
+      headerName: 'ID Print Status',
+      width: 140,
       renderCell: (params: GridRenderCellParams) => (
         <Chip
           label={params.row.id_print_status}
@@ -428,6 +485,20 @@ const DashboardContent = () => {
           sx={{ fontWeight: 500 }}
         />
       ),
+    },
+    {
+      field: 'id_print_date',
+      headerName: 'ID Print Date',
+      width: 140,
+      renderCell: (params: GridRenderCellParams) => {
+        if (!params.row.id_print_date) return <Typography variant="body2">—</Typography>;
+        const date = new Date(params.row.id_print_date);
+        return date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+        });
+      },
     },
     {
       field: 'actions',
@@ -459,7 +530,7 @@ const DashboardContent = () => {
   if (loading) return <PageLoader />;
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 3 } }}>
+    <Box sx={{ p: { xs: 2, sm: 3 }, width: '100%' }}>
       {/* Statistics Cards - cursor default */}
       <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: { xs: 3, sm: 4 } }}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
@@ -755,7 +826,12 @@ const DashboardContent = () => {
       {/* DataGrid - with pointer cursor on rows */}
       <Paper
         elevation={0}
-        sx={{ borderRadius: 3, border: '1px solid #e9edf4', overflow: 'hidden' }}
+        sx={{
+          borderRadius: 3,
+          border: '1px solid #e9edf4',
+          overflow: 'hidden',
+          width: '100%',
+        }}
       >
         <DataGrid
           rowHeight={64}
