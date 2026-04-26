@@ -92,7 +92,7 @@ const sitemap: MenuItem[] = [
       {
         name: 'Logout',
         pathName: 'logout',
-        icon: 'material-symbols:power-settings-new-rounded', // ✅ power-switch icon
+        icon: 'material-symbols:power-settings-new-rounded',
         active: true,
         roles: ['Super Admin', 'Admin', 'Faculty', 'Student'],
       },

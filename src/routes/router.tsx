@@ -50,7 +50,7 @@ export const routes: RouteObject[] = [
         ),
         children: [
           { index: true, element: <Dashboard /> },
-          { path: paths.management, element: <PlaceholderPage title="Management" /> },
+          { path: paths.management, element: <Profile /> },
           { path: paths.accounts, element: <PlaceholderPage title="Accounts" /> },
           { path: paths.monitoring, element: <PlaceholderPage title="Monitoring" /> },
           { path: paths.student_profile, element: <PlaceholderPage title="Student Profile" /> },
