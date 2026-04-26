@@ -43,4 +43,4 @@ Thumbs.db
 
 # Optional but recommended
 # If you're using TypeScript
-*.tsbuildinfo
+*.tsbuildinfodist/
