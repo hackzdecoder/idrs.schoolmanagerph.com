@@ -127,6 +127,9 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [isCheckboxChecked, setIsCheckboxChecked] = useState(false);
 
+  // Check if class details is already approved
+  const isClassDetailsApproved = student?.class_details_status?.toLowerCase() === 'approved';
+
   const [editableData, setEditableData] = useState({
     first_name: student?.first_name || '',
     middle_initial: student?.middle_initial || '',
@@ -154,6 +157,9 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
   });
 
   const handleFieldChange = (field: string, value: string | boolean) => {
+    // Don't allow editing if class details is already approved
+    if (isClassDetailsApproved) return;
+
     let processedValue = value;
 
     if (typeof value === 'string') {
@@ -206,6 +212,8 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
   };
 
   const handleMiddleInitialBlur = () => {
+    if (isClassDetailsApproved) return;
+
     const formatted = formatMiddleInitialOnBlur(editableData.middle_initial);
     if (formatted !== editableData.middle_initial) {
       setEditableData((prev) => {
@@ -222,7 +230,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
     setIsCheckboxChecked(false);
   };
 
-  // Save school information to backend - sends ALL school fields
+  // Save school information to backend - ONLY updates student_id_info table
   const saveSchoolInformation = async (): Promise<boolean> => {
     if (!student?.id) {
       Swal.fire({
@@ -238,30 +246,40 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
     const updateData: Record<string, any> = {};
 
     // Always send level
-    updateData.level = editableData.level;
+    if (editableData.level !== student?.level) {
+      updateData.level = editableData.level;
+    }
 
     // Always send section_course
-    updateData.section_course = editableData.section_course;
+    if (editableData.section_course !== student?.section_course) {
+      updateData.section_course = editableData.section_course;
+    }
 
     // Always send lrn
-    updateData.lrn = editableData.lrn;
+    if (editableData.lrn !== student?.lrn) {
+      updateData.lrn = editableData.lrn;
+    }
 
     // Always send esc_voucher_recipient
-    updateData.esc_voucher_recipient = editableData.esc_voucher_recipient;
+    if (editableData.esc_voucher_recipient !== student?.esc_voucher_recipient) {
+      updateData.esc_voucher_recipient = editableData.esc_voucher_recipient;
+    }
 
     // Always send esc_number (even if empty)
-    updateData.esc_number = editableData.esc_number || '';
+    if (editableData.esc_number !== student?.esc_number) {
+      updateData.esc_number = editableData.esc_number || '';
+    }
 
-    console.log('Sending school data:', updateData);
-    console.log('Student ID:', student.id);
+    // If no changes, return true without API call
+    if (Object.keys(updateData).length === 0) {
+      return true;
+    }
 
     try {
       const response = await put<{ success: boolean; response: string }>(
         `/admin/students/${student.id}`,
         updateData,
       );
-
-      console.log('Update response:', response);
 
       if (response.success) {
         return true;
@@ -294,31 +312,39 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
       return;
     }
 
+    // Check if already approved
+    if (isClassDetailsApproved) {
+      Swal.fire({
+        icon: 'info',
+        title: 'Already Approved',
+        text: 'Class details have already been approved for this student.',
+        confirmButtonColor: '#2563eb',
+      });
+      return;
+    }
+
     try {
       setUpdating(true);
       setConfirmModalOpen(false);
 
-      // Save school information first
+      // Save school information first (updates student_id_info table only)
       const saved = await saveSchoolInformation();
 
       if (!saved) {
         return;
       }
 
-      // Also approve class details if not already approved
-      // Let backend handle the approval date automatically
-      if (student.class_details_status?.toLowerCase() !== 'approved') {
-        const classDetailsResponse = await put<{ success: boolean; response: string }>(
-          `/admin/students/${student.id}`,
-          {
-            class_details_status: 'approved',
-            // No date sent - backend will set it using Carbon::now('Asia/Manila')
-          },
-        );
+      // Approve class details - ONLY updates student_id_info table
+      const classDetailsResponse = await put<{ success: boolean; response: string }>(
+        `/admin/students/${student.id}`,
+        {
+          class_details_status: 'approved',
+          // No date sent - backend will set it using Carbon::now('Asia/Manila')
+        },
+      );
 
-        if (!classDetailsResponse.success) {
-          throw new Error(classDetailsResponse.response || 'Failed to approve class details');
-        }
+      if (!classDetailsResponse.success) {
+        throw new Error(classDetailsResponse.response || 'Failed to approve class details');
       }
 
       // Refresh the student list if callback provided
@@ -361,7 +387,18 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
   };
 
   const openConfirmModal = () => {
-    // ✅ Check if ID info is still pending
+    // Check if already approved
+    if (isClassDetailsApproved) {
+      Swal.fire({
+        icon: 'info',
+        title: 'Already Approved',
+        text: 'Class details have already been approved for this student. No further edits or approvals are allowed.',
+        confirmButtonColor: '#2563eb',
+      });
+      return;
+    }
+
+    // Check if ID info is approved first
     if (student?.id_info_status?.toLowerCase() !== 'approved') {
       Swal.fire({
         icon: 'error',
@@ -495,8 +532,6 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
     );
   }
 
-  const isIdInfoApproved = student.id_info_status?.toLowerCase() === 'approved';
-
   return (
     <Box sx={{ p: 0 }}>
       <Paper
@@ -530,12 +565,21 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
                 >
                   Student ID Registration
                 </Typography>
-                <Chip
-                  label={isIdInfoApproved ? 'ID Info Approved' : 'ID Info Pending'}
-                  color={isIdInfoApproved ? 'success' : 'warning'}
-                  size="small"
-                  sx={{ fontWeight: 500 }}
-                />
+                {isClassDetailsApproved ? (
+                  <Chip
+                    label="Class Details Approved"
+                    color="success"
+                    size="small"
+                    sx={{ fontWeight: 500 }}
+                  />
+                ) : (
+                  <Chip
+                    label="Pending Approval"
+                    color="warning"
+                    size="small"
+                    sx={{ fontWeight: 500 }}
+                  />
+                )}
               </Stack>
             </Grid>
 
@@ -572,7 +616,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
 
             <Divider sx={{ my: 0 }} />
 
-            {/* A. Personal Information - ALL EDITABLE */}
+            {/* A. Personal Information - ALL EDITABLE (but disabled if approved) */}
             <Grid size={{ xs: 12 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2563eb', mb: 2 }}>
                 A. Personal Information
@@ -586,6 +630,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
                 value={editableData.first_name}
                 onChange={(e) => handleFieldChange('first_name', e.target.value)}
                 required
+                disabled={isClassDetailsApproved}
               />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
@@ -598,6 +643,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
                 onBlur={handleMiddleInitialBlur}
                 placeholder="e.g., D, DC, D.C, D. C."
                 helperText="Enter middle initial(s) only. Period will be added automatically."
+                disabled={isClassDetailsApproved}
               />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
@@ -608,6 +654,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
                 value={editableData.surname}
                 onChange={(e) => handleFieldChange('surname', e.target.value)}
                 required
+                disabled={isClassDetailsApproved}
               />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
@@ -618,6 +665,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
                 value={editableData.suffix_name}
                 onChange={(e) => handleFieldChange('suffix_name', e.target.value)}
                 placeholder="Jr., Sr., III, etc. (Optional)"
+                disabled={isClassDetailsApproved}
               />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
@@ -628,6 +676,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
                 value={editableData.nick_name}
                 onChange={(e) => handleFieldChange('nick_name', e.target.value)}
                 required
+                disabled={isClassDetailsApproved}
               />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
@@ -640,10 +689,11 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
                 onChange={(e) => handleFieldChange('birth_date', e.target.value)}
                 InputLabelProps={{ shrink: true }}
                 required
+                disabled={isClassDetailsApproved}
               />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
-              <FormControl fullWidth size="medium" required>
+              <FormControl fullWidth size="medium" required disabled={isClassDetailsApproved}>
                 <InputLabel>Gender</InputLabel>
                 <Select
                   value={editableData.gender}
@@ -665,12 +715,13 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
                 placeholder="Last Name, First Name MI."
                 required
                 helperText="Auto-generated from First Name, Middle Initial, and Last Name. You can still edit if needed."
+                disabled={isClassDetailsApproved}
               />
             </Grid>
 
             <Divider sx={{ my: 2 }} />
 
-            {/* B. Additional Information - ALL EDITABLE */}
+            {/* B. Additional Information - ALL EDITABLE (but disabled if approved) */}
             <Grid size={{ xs: 12 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2563eb', mb: 2 }}>
                 B. Additional Information
@@ -686,6 +737,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
                 multiline
                 rows={2}
                 required
+                disabled={isClassDetailsApproved}
               />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
@@ -696,6 +748,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
                 value={editableData.emergency_contact_person}
                 onChange={(e) => handleFieldChange('emergency_contact_person', e.target.value)}
                 required
+                disabled={isClassDetailsApproved}
               />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
@@ -718,12 +771,13 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
                   !!editableData.emergency_contact_number &&
                   !isValidPhoneNumber(editableData.emergency_contact_number)
                 }
+                disabled={isClassDetailsApproved}
               />
             </Grid>
 
             <Divider sx={{ my: 2 }} />
 
-            {/* C. School Information - EDITABLE */}
+            {/* C. School Information - EDITABLE (disabled if approved) */}
             <Grid size={{ xs: 12 }}>
               <Stack
                 direction="row"
@@ -734,7 +788,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
                 <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2563eb' }}>
                   C. School Information
                 </Typography>
-                {student?.class_details_status?.toLowerCase() === 'approved' && (
+                {isClassDetailsApproved && (
                   <Chip
                     label="Class Details Approved"
                     color="success"
@@ -752,7 +806,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
                 value={editableData.level}
                 onChange={(e) => handleFieldChange('level', e.target.value)}
                 placeholder="e.g., Grade 7, Grade 8, Grade 9, Grade 10, Grade 11, Grade 12"
-                disabled={!isIdInfoApproved}
+                disabled={isClassDetailsApproved}
               />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
@@ -763,7 +817,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
                 value={editableData.section_course}
                 onChange={(e) => handleFieldChange('section_course', e.target.value)}
                 placeholder="e.g., Section A, STEM, ABM, HUMSS"
-                disabled={!isIdInfoApproved}
+                disabled={isClassDetailsApproved}
               />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
@@ -774,11 +828,11 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
                 value={editableData.lrn}
                 onChange={(e) => handleFieldChange('lrn', e.target.value)}
                 placeholder="Enter LRN if available"
-                disabled={!isIdInfoApproved}
+                disabled={isClassDetailsApproved}
               />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
-              <FormControl fullWidth size="medium" disabled={!isIdInfoApproved}>
+              <FormControl fullWidth size="medium" disabled={isClassDetailsApproved}>
                 <InputLabel>DepEd ESC Grantee</InputLabel>
                 <Select
                   value={editableData.esc_voucher_recipient ? 'Yes' : 'No'}
@@ -801,7 +855,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
                   value={editableData.esc_number}
                   onChange={(e) => handleFieldChange('esc_number', e.target.value)}
                   placeholder="Enter ESC number"
-                  disabled={!isIdInfoApproved}
+                  disabled={isClassDetailsApproved}
                 />
               </Grid>
             )}
@@ -814,11 +868,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
                 </Typography>
                 <Chip
                   label={student?.class_details_status || 'Pending'}
-                  color={
-                    student?.class_details_status?.toLowerCase() === 'approved'
-                      ? 'success'
-                      : 'warning'
-                  }
+                  color={isClassDetailsApproved ? 'success' : 'warning'}
                   size="small"
                   sx={{ fontWeight: 500 }}
                 />
@@ -832,7 +882,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
 
             <Divider sx={{ my: 2 }} />
 
-            {/* D. Parent/Guardian Information - ALL EDITABLE */}
+            {/* D. Parent/Guardian Information - ALL EDITABLE (disabled if approved) */}
             <Grid size={{ xs: 12 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2563eb', mb: 2 }}>
                 D. Parent/Guardian Information
@@ -846,6 +896,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
                 value={editableData.parent_first_name}
                 onChange={(e) => handleFieldChange('parent_first_name', e.target.value)}
                 required
+                disabled={isClassDetailsApproved}
               />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
@@ -856,6 +907,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
                 value={editableData.parent_surname}
                 onChange={(e) => handleFieldChange('parent_surname', e.target.value)}
                 required
+                disabled={isClassDetailsApproved}
               />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
@@ -867,61 +919,61 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
                 value={editableData.parent_email}
                 onChange={(e) => handleFieldChange('parent_email', e.target.value)}
                 placeholder="optional@example.com"
+                disabled={isClassDetailsApproved}
               />
             </Grid>
 
-            {/* Warning message if ID info not approved */}
-            {!isIdInfoApproved && (
+            {/* Submit Button - Hidden if already approved */}
+            {!isClassDetailsApproved && (
               <Grid size={{ xs: 12 }}>
-                <Typography
-                  variant="caption"
-                  sx={{ color: '#e65100', display: 'block', textAlign: 'right' }}
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={2}
+                  justifyContent="flex-end"
+                  sx={{ mt: { xs: 3, sm: 5 } }}
                 >
-                  <IconifyIcon
-                    icon="mdi:alert"
-                    fontSize={16}
-                    sx={{ verticalAlign: 'middle', mr: 0.5 }}
-                  />
-                  Student ID information must be approved first before school information can be
-                  edited and class details can be approved.
-                </Typography>
+                  <Button
+                    variant="contained"
+                    onClick={openConfirmModal}
+                    startIcon={<IconifyIcon icon="mdi:check-circle" />}
+                    disabled={updating}
+                    sx={{
+                      bgcolor: updating ? '#94a3b8' : '#22c55e',
+                      '&:hover': { bgcolor: updating ? '#94a3b8' : '#16a34a' },
+                      textTransform: 'none',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {updating ? 'Approving...' : 'Approve Student'}
+                  </Button>
+                  {onClose && (
+                    <Button
+                      variant="outlined"
+                      onClick={onClose}
+                      disabled={updating}
+                      sx={{ textTransform: 'none', fontWeight: 600 }}
+                    >
+                      Back
+                    </Button>
+                  )}
+                </Stack>
               </Grid>
             )}
 
-            {/* Submit Button */}
-            <Grid size={{ xs: 12 }}>
-              <Stack
-                direction={{ xs: 'column', sm: 'row' }}
-                spacing={2}
-                justifyContent="flex-end"
-                sx={{ mt: { xs: 3, sm: 5 } }}
-              >
-                <Button
-                  variant="contained"
-                  onClick={openConfirmModal}
-                  startIcon={<IconifyIcon icon="mdi:check-circle" />}
-                  disabled={updating || !isIdInfoApproved}
-                  sx={{
-                    bgcolor: updating || !isIdInfoApproved ? '#94a3b8' : '#22c55e',
-                    '&:hover': { bgcolor: updating || !isIdInfoApproved ? '#94a3b8' : '#16a34a' },
-                    textTransform: 'none',
-                    fontWeight: 600,
-                  }}
-                >
-                  {updating ? 'Approving...' : 'Approve Student'}
-                </Button>
-                {onClose && (
+            {/* Show message if already approved */}
+            {isClassDetailsApproved && (
+              <Grid size={{ xs: 12 }}>
+                <Stack direction="row" justifyContent="flex-end" sx={{ mt: { xs: 3, sm: 5 } }}>
                   <Button
                     variant="outlined"
                     onClick={onClose}
-                    disabled={updating}
                     sx={{ textTransform: 'none', fontWeight: 600 }}
                   >
                     Back
                   </Button>
-                )}
-              </Stack>
-            </Grid>
+                </Stack>
+              </Grid>
+            )}
           </Grid>
         </Box>
       </Paper>
@@ -1113,11 +1165,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
                 </Typography>
                 <Chip
                   label={student?.class_details_status || 'Pending'}
-                  color={
-                    student?.class_details_status?.toLowerCase() === 'approved'
-                      ? 'success'
-                      : 'warning'
-                  }
+                  color={isClassDetailsApproved ? 'success' : 'warning'}
                   size="small"
                   sx={{ fontWeight: 500, mt: 0.5 }}
                 />
