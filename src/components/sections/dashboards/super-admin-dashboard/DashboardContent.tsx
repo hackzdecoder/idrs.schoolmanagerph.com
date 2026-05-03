@@ -149,6 +149,13 @@ interface Statistics {
   totalReprintedIds: number;
 }
 
+// Helper function to get student photo URL
+// Pattern: https://schoolmanagerph.com/idrs-school-ids/{school_code}/{student_id}_{surname}.jpg
+const getStudentPhotoUrl = (schoolCode: string, studentId: string, surname: string): string => {
+  if (!schoolCode || !studentId || !surname) return '';
+  return `https://schoolmanagerph.com/idrs-school-ids/${schoolCode}/${studentId}_${surname}.jpg`;
+};
+
 /**
  * Capitalizes first letter of a string without forcing the rest to lowercase
  * Use this for proper nouns and phrases like "Section A"
@@ -415,7 +422,6 @@ const DashboardContent = () => {
           parent_full_name: student.parent_full_name,
           parent_email: student.parent_email,
           emergency_contact: student.emergency_contact,
-          // ✅ ADDED: Missing field mappings for modal display
           nick_name: student.nick_name || null,
           birth_date: student.birth_date || null,
           gender: student.gender || null,
@@ -512,7 +518,6 @@ const DashboardContent = () => {
           parent_full_name: student.parent_full_name,
           parent_email: student.parent_email,
           emergency_contact: student.emergency_contact,
-          // ✅ ADDED: Missing field mappings for modal display
           nick_name: student.nick_name || null,
           birth_date: student.birth_date || null,
           gender: student.gender || null,
@@ -790,16 +795,28 @@ const DashboardContent = () => {
       field: 'name_to_appear_on_id',
       headerName: 'Student Name',
       width: 200,
-      renderCell: (params: GridRenderCellParams) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Avatar sx={{ width: 32, height: 32, bgcolor: '#2563eb', fontSize: '0.875rem' }}>
-            {params.row.name_to_appear_on_id?.charAt(0) || 'S'}
-          </Avatar>
-          <Typography variant="body2" sx={{ fontWeight: 500 }}>
-            {preserveCase(params.row.name_to_appear_on_id)}
-          </Typography>
-        </Box>
-      ),
+      renderCell: (params: GridRenderCellParams) => {
+        const student = params.row as StudentRecord;
+        const photoUrl = getStudentPhotoUrl(
+          student.school_code,
+          student.student_id,
+          student.last_name,
+        );
+
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Avatar
+              src={photoUrl}
+              sx={{ width: 32, height: 32, bgcolor: '#2563eb', fontSize: '0.875rem' }}
+            >
+              {student.name_to_appear_on_id?.charAt(0) || 'S'}
+            </Avatar>
+            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+              {preserveCase(student.name_to_appear_on_id)}
+            </Typography>
+          </Box>
+        );
+      },
     },
     {
       field: 'level',
@@ -1538,6 +1555,11 @@ const DashboardContent = () => {
             <Stack spacing={3} direction="column">
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Avatar
+                  src={getStudentPhotoUrl(
+                    selectedStudent.school_code,
+                    selectedStudent.student_id,
+                    selectedStudent.last_name,
+                  )}
                   sx={{
                     width: { xs: 64, sm: 80 },
                     height: { xs: 64, sm: 80 },

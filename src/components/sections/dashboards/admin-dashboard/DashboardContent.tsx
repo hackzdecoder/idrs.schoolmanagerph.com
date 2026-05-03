@@ -207,6 +207,15 @@ const getStatusColor = (status: string) => {
   }
 };
 
+// Helper function to get student photo URL
+// Pattern: /idrs-school-ids/{school_code}/{student_id}_{surname}.jpg
+// Example: /idrs-school-ids/atheneum/26010000014_Clark.jpg
+const getStudentPhotoUrl = (schoolCode: string, studentId: string, surname: string): string => {
+  if (!schoolCode || !studentId || !surname) return '';
+  // Use absolute URL with your production domain
+  return `https://schoolmanagerph.com/idrs-school-ids/${schoolCode}/${studentId}_${surname}.jpg`;
+};
+
 const DashboardContent = () => {
   const { get } = useRouteApiSetup();
   const theme = useTheme();
@@ -565,16 +574,28 @@ const DashboardContent = () => {
       field: 'name_to_appear_on_id',
       headerName: 'Student Name',
       width: 200,
-      renderCell: (params: GridRenderCellParams) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Avatar sx={{ width: 32, height: 32, bgcolor: '#2563eb', fontSize: '0.875rem' }}>
-            {params.row.name_to_appear_on_id?.charAt(0) || 'S'}
-          </Avatar>
-          <Typography variant="body2" sx={{ fontWeight: 500 }}>
-            {preserveCase(params.row.name_to_appear_on_id)}
-          </Typography>
-        </Box>
-      ),
+      renderCell: (params: GridRenderCellParams) => {
+        const student = params.row as StudentRecord;
+        const photoUrl = getStudentPhotoUrl(
+          student.school_code,
+          student.student_id,
+          student.last_name,
+        );
+
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Avatar
+              src={photoUrl}
+              sx={{ width: 32, height: 32, bgcolor: '#2563eb', fontSize: '0.875rem' }}
+            >
+              {student.name_to_appear_on_id?.charAt(0) || 'S'}
+            </Avatar>
+            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+              {preserveCase(student.name_to_appear_on_id)}
+            </Typography>
+          </Box>
+        );
+      },
     },
     {
       field: 'level',
@@ -1283,6 +1304,11 @@ const DashboardContent = () => {
             <Stack spacing={3} direction="column">
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Avatar
+                  src={getStudentPhotoUrl(
+                    selectedStudent.school_code,
+                    selectedStudent.student_id,
+                    selectedStudent.last_name,
+                  )}
                   sx={{
                     width: { xs: 64, sm: 80 },
                     height: { xs: 64, sm: 80 },

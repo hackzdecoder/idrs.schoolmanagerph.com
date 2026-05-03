@@ -67,6 +67,13 @@ interface StudentDetailsProps {
   onUpdate?: () => void;
 }
 
+// Helper function to get student photo URL
+// Pattern: https://schoolmanagerph.com/idrs-school-ids/{school_code}/{student_id}_{surname}.jpg
+const getStudentPhotoUrl = (schoolCode: string, studentId: string, surname: string): string => {
+  if (!schoolCode || !studentId || !surname) return '';
+  return `https://schoolmanagerph.com/idrs-school-ids/${schoolCode}/${studentId}_${surname}.jpg`;
+};
+
 // Helper functions
 const formatMiddleInitialOnBlur = (value: string): string => {
   if (!value) return '';
@@ -129,6 +136,12 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
 
   // Check if class details is already approved
   const isClassDetailsApproved = student?.class_details_status?.toLowerCase() === 'approved';
+
+  // Generate photo URL for the current student
+  const studentPhotoUrl =
+    student?.school_code && student?.student_id && student?.last_name
+      ? getStudentPhotoUrl(student.school_code, student.student_id, student.last_name)
+      : '';
 
   const [editableData, setEditableData] = useState({
     first_name: student?.first_name || '',
@@ -586,6 +599,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
             <Grid size={{ xs: 12 }}>
               <Stack sx={{ alignItems: 'center', gap: 1 }}>
                 <Avatar
+                  src={studentPhotoUrl}
                   sx={{
                     width: { xs: 70, sm: 80, md: 90 },
                     height: { xs: 70, sm: 80, md: 90 },

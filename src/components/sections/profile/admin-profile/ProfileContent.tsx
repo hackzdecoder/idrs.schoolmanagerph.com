@@ -60,7 +60,6 @@ interface StudentInformation {
   id_info_approval_date?: string | null;
   class_details_approval_date?: string | null;
   id_print_date?: string | null;
-  // ✅ ADD THESE
   parent_first_name?: string | null;
   parent_surname?: string | null;
 }
@@ -97,7 +96,6 @@ interface StudentRecord {
   gender?: string | null;
   esc_voucher_recipient?: boolean;
   esc_number?: string | null;
-  // ✅ ADD THESE
   parent_first_name?: string | null;
   parent_surname?: string | null;
 }
@@ -138,6 +136,13 @@ const getStatusColor = (status: string) => {
     default:
       return 'default';
   }
+};
+
+// Helper function to get student photo URL
+// Pattern: https://schoolmanagerph.com/idrs-school-ids/{school_code}/{student_id}_{surname}.jpg
+const getStudentPhotoUrl = (schoolCode: string, studentId: string, surname: string): string => {
+  if (!schoolCode || !studentId || !surname) return '';
+  return `https://schoolmanagerph.com/idrs-school-ids/${schoolCode}/${studentId}_${surname}.jpg`;
 };
 
 const ProfileContent = () => {
@@ -218,7 +223,6 @@ const ProfileContent = () => {
           gender: student.gender || null,
           esc_voucher_recipient: student.esc_voucher_recipient || false,
           esc_number: student.esc_number || null,
-          // ✅ ADD THESE THREE
           parent_first_name: student.parent_first_name || null,
           parent_surname: student.parent_surname || null,
         }));
@@ -292,7 +296,6 @@ const ProfileContent = () => {
           gender: student.gender || null,
           esc_voucher_recipient: student.esc_voucher_recipient || false,
           esc_number: student.esc_number || null,
-          // ✅ ADD THESE THREE
           parent_first_name: student.parent_first_name || null,
           parent_surname: student.parent_surname || null,
         }));
@@ -369,16 +372,28 @@ const ProfileContent = () => {
       field: 'name_to_appear_on_id',
       headerName: 'Student Name',
       width: 200,
-      renderCell: (params: GridRenderCellParams) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Avatar sx={{ width: 32, height: 32, bgcolor: '#2563eb', fontSize: '0.875rem' }}>
-            {params.row.name_to_appear_on_id?.charAt(0) || 'S'}
-          </Avatar>
-          <Typography variant="body2" sx={{ fontWeight: 500 }}>
-            {params.row.name_to_appear_on_id}
-          </Typography>
-        </Box>
-      ),
+      renderCell: (params: GridRenderCellParams) => {
+        const student = params.row as StudentRecord;
+        const photoUrl = getStudentPhotoUrl(
+          student.school_code,
+          student.student_id,
+          student.last_name,
+        );
+
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Avatar
+              src={photoUrl}
+              sx={{ width: 32, height: 32, bgcolor: '#2563eb', fontSize: '0.875rem' }}
+            >
+              {student.name_to_appear_on_id?.charAt(0) || 'S'}
+            </Avatar>
+            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+              {student.name_to_appear_on_id}
+            </Typography>
+          </Box>
+        );
+      },
     },
     {
       field: 'level',

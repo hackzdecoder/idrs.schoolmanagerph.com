@@ -8,7 +8,6 @@ import {
   Chip,
   Divider,
   FormControl,
-  IconButton,
   InputAdornment,
   InputLabel,
   MenuItem,
@@ -17,7 +16,6 @@ import {
   SelectChangeEvent,
   Stack,
   TextField,
-  Tooltip,
   Typography,
   useMediaQuery,
   useTheme,
@@ -25,8 +23,6 @@ import {
 import Grid from '@mui/material/Grid';
 import { DataGrid, GridColDef, GridRenderCellParams, GridRowParams } from '@mui/x-data-grid';
 import useRouteApiSetup from 'hooks/useRouteApiSetup';
-import Swal from 'sweetalert2';
-import * as XLSX from 'xlsx';
 import IconifyIcon from 'components/base/IconifyIcon';
 import { Dialog } from 'components/dialogs/Dialog';
 import PageLoader from 'components/loading/PageLoader';
@@ -59,14 +55,14 @@ interface StudentInformation {
   emergency_contact: string | null;
   created_at: string;
   name_to_appear_on_id: string;
+  nick_name?: string | null;
+  birth_date?: string | null;
+  gender?: string | null;
   id_info_approval_date?: string | null;
   class_details_approval_date?: string | null;
   esc_voucher_recipient?: boolean;
   esc_number?: string | null;
   id_print_date?: string | null;
-  birth_date?: string | null;
-  gender?: string | null;
-  nick_name?: string | null;
 }
 
 interface StudentRecord {
@@ -87,21 +83,22 @@ interface StudentRecord {
   last_name: string;
   middle_initial?: string | null;
   suffix?: string;
+  username: string;
+  present_address?: string;
   level: string;
   section_course: string;
+  account_status: string;
   parent_full_name?: string | null;
   parent_email?: string | null;
   emergency_contact?: string | null;
-  present_address?: string;
-  account_status: string;
+  nick_name?: string | null;
+  birth_date?: string | null;
+  gender?: string | null;
   id_info_approval_date?: string | null;
   class_details_approval_date?: string | null;
   esc_voucher_recipient?: boolean;
   esc_number?: string | null;
   id_print_date?: string | null;
-  birth_date?: string | null;
-  gender?: string | null;
-  nick_name?: string | null;
 }
 
 interface FilterCriteria {
@@ -124,10 +121,63 @@ interface FilterCriteria {
 
 interface Statistics {
   total: number;
-  pending: number;
-  approved: number;
-  declined: number;
+  approvedIdInfo: number;
+  pendingIdInfo: number;
+  approvedClassDetails: number;
+  pendingClassDetails: number;
+  printedIds: number;
+  totalPendingIds: number;
+  totalReprintedIds: number;
 }
+
+const capitalizeFirstLetter = (str: string): string => {
+  if (!str) return '';
+  return str.charAt(0).toUpperCase() + str.slice(1);
+};
+
+const capitalizeWords = (str: string): string => {
+  if (!str) return '';
+  return str
+    .split(' ')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+};
+
+const formatName = (name: string | null | undefined): string => {
+  if (!name) return '—';
+  return capitalizeWords(name);
+};
+
+const formatMiddleInitial = (initial: string | null | undefined): string => {
+  if (!initial) return '—';
+  return initial.toUpperCase();
+};
+
+const preserveCase = (text: string | null | undefined): string => {
+  if (!text) return '—';
+  return text;
+};
+
+const formatStatus = (status: string | undefined | null): string => {
+  if (!status) return '—';
+  if (status.toLowerCase() === 'yes') return 'Yes';
+  if (status.toLowerCase() === 'no') return 'No';
+  return capitalizeFirstLetter(status);
+};
+
+const formatStudentType = (type: string | undefined | null): string => {
+  if (!type) return 'Not specified';
+  if (type.toLowerCase() === 'new') return 'New Student';
+  if (type.toLowerCase() === 'old') return 'Old Student';
+  return capitalizeFirstLetter(type);
+};
+
+const getStudentTypeColor = (type: string | undefined | null): string => {
+  if (!type) return 'default';
+  if (type.toLowerCase() === 'new') return 'info';
+  if (type.toLowerCase() === 'old') return 'secondary';
+  return 'default';
+};
 
 const getStatusColor = (status: string) => {
   switch (status?.toLowerCase()) {
@@ -138,14 +188,16 @@ const getStatusColor = (status: string) => {
     case 'declined':
     case 'rejected':
       return 'error';
-    case 'printed':
-      return 'success';
-    case 'pending_print':
-      return 'warning';
     case 'active':
       return 'success';
     case 'inactive':
       return 'default';
+    case 'processing':
+      return 'info';
+    case 'printed':
+      return 'success';
+    case 'pending_print':
+      return 'warning';
     case 'yes':
       return 'success';
     case 'no':
@@ -156,7 +208,7 @@ const getStatusColor = (status: string) => {
 };
 
 const DashboardContent = () => {
-  const { get, post } = useRouteApiSetup();
+  const { get } = useRouteApiSetup();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -164,17 +216,13 @@ const DashboardContent = () => {
   const [loading, setLoading] = useState(true);
   const [selectedStudent, setSelectedStudent] = useState<StudentRecord | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [approveModalOpen, setApproveModalOpen] = useState(false);
-  const [studentToApprove, setStudentToApprove] = useState<StudentRecord | null>(null);
-  const [isCheckboxChecked, setIsCheckboxChecked] = useState(false);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [filterLoading, setFilterLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
-  const [updating, setUpdating] = useState(false);
   const fetchedRef = useRef(false);
   const getRef = useRef(get);
 
-  // Dynamic filter options
+  const [schoolCodeOptions, setSchoolCodeOptions] = useState<string[]>([]);
   const [levelOptions, setLevelOptions] = useState<string[]>([]);
   const [sectionOptions, setSectionOptions] = useState<string[]>([]);
 
@@ -198,29 +246,66 @@ const DashboardContent = () => {
 
   const statistics: Statistics = useMemo(() => {
     const total = students.length;
-    const pending = students.filter((s) => s.id_info_status?.toLowerCase() === 'pending').length;
-    const approved = students.filter((s) => s.id_info_status?.toLowerCase() === 'approved').length;
-    const declined = students.filter((s) => s.id_info_status?.toLowerCase() === 'declined').length;
-    return { total, pending, approved, declined };
+    const approvedIdInfo = students.filter(
+      (s) => s.id_info_status?.toLowerCase() === 'approved',
+    ).length;
+    const pendingIdInfo = students.filter(
+      (s) => s.id_info_status?.toLowerCase() === 'pending',
+    ).length;
+    const approvedClassDetails = students.filter(
+      (s) => s.class_details_status?.toLowerCase() === 'approved',
+    ).length;
+    const pendingClassDetails = students.filter(
+      (s) => s.class_details_status?.toLowerCase() === 'pending',
+    ).length;
+    const printedIds = students.filter(
+      (s) => s.id_print_status?.toLowerCase() === 'printed',
+    ).length;
+    const totalPendingIds = students.filter(
+      (s) =>
+        s.id_print_status?.toLowerCase() === 'pending' ||
+        s.id_print_status?.toLowerCase() === 'pending_print',
+    ).length;
+    const totalReprintedIds = students.reduce((sum, student) => {
+      return sum + (student.id_reprint_count || 0);
+    }, 0);
+
+    return {
+      total,
+      approvedIdInfo,
+      pendingIdInfo,
+      approvedClassDetails,
+      pendingClassDetails,
+      printedIds,
+      totalPendingIds,
+      totalReprintedIds,
+    };
   }, [students]);
 
   const filteredStudents = useMemo(() => {
     if (!searchText.trim()) return students;
     const searchLower = searchText.toLowerCase();
-    return students.filter(
-      (student) =>
+    return students.filter((student) => {
+      return (
         student.student_id?.toLowerCase().includes(searchLower) ||
+        student.school_code?.toLowerCase().includes(searchLower) ||
         student.name_to_appear_on_id?.toLowerCase().includes(searchLower) ||
         student.email?.toLowerCase().includes(searchLower) ||
-        student.id_info_status?.toLowerCase().includes(searchLower),
-    );
+        student.username?.toLowerCase().includes(searchLower) ||
+        student.id_info_status?.toLowerCase().includes(searchLower)
+      );
+    });
   }, [students, searchText]);
 
   const extractFilterOptions = (studentRecords: StudentRecord[]) => {
+    const schoolCodes = [
+      ...new Set(studentRecords.map((s) => s.school_code).filter(Boolean)),
+    ].sort();
     const levels = [...new Set(studentRecords.map((s) => s.level).filter(Boolean))].sort();
     const sections = [
       ...new Set(studentRecords.map((s) => s.section_course).filter(Boolean)),
     ].sort();
+    setSchoolCodeOptions(schoolCodes);
     setLevelOptions(levels);
     setSectionOptions(sections);
   };
@@ -250,21 +335,21 @@ const DashboardContent = () => {
           last_name: student.surname,
           middle_initial: student.middle_initial || null,
           suffix: student.suffix_name || undefined,
+          username: student.username || student.student_id,
+          present_address: student.residential_address || undefined,
           level: student.level,
           section_course: student.section_course,
+          account_status: student.account_status || 'active',
           parent_full_name: student.parent_full_name,
           parent_email: student.parent_email,
           emergency_contact: student.emergency_contact,
-          present_address: student.residential_address || undefined,
-          account_status: student.account_status || 'active',
-          id_info_approval_date: student.id_info_approval_date || null,
-          class_details_approval_date: student.class_details_approval_date || null,
-          esc_voucher_recipient: student.esc_voucher_recipient || false,
-          esc_number: student.esc_number || null,
-          id_print_date: student.id_print_date || null,
+          nick_name: student.nick_name || null,
           birth_date: student.birth_date || null,
           gender: student.gender || null,
-          nick_name: student.nick_name || null,
+          esc_number: student.esc_number || null,
+          id_info_approval_date: student.id_info_approval_date || null,
+          class_details_approval_date: student.class_details_approval_date || null,
+          id_print_date: student.id_print_date || null,
         }));
         setStudents(studentRecords);
         extractFilterOptions(studentRecords);
@@ -339,24 +424,25 @@ const DashboardContent = () => {
           last_name: student.surname,
           middle_initial: student.middle_initial || null,
           suffix: student.suffix_name || undefined,
+          username: student.username || student.student_id,
+          present_address: student.residential_address || undefined,
           level: student.level,
           section_course: student.section_course,
+          account_status: student.account_status || 'active',
           parent_full_name: student.parent_full_name,
           parent_email: student.parent_email,
           emergency_contact: student.emergency_contact,
-          present_address: student.residential_address || undefined,
-          account_status: student.account_status || 'active',
-          id_info_approval_date: student.id_info_approval_date || null,
-          class_details_approval_date: student.class_details_approval_date || null,
-          esc_voucher_recipient: student.esc_voucher_recipient || false,
-          esc_number: student.esc_number || null,
-          id_print_date: student.id_print_date || null,
+          nick_name: student.nick_name || null,
           birth_date: student.birth_date || null,
           gender: student.gender || null,
-          nick_name: student.nick_name || null,
+          esc_number: student.esc_number || null,
+          id_info_approval_date: student.id_info_approval_date || null,
+          class_details_approval_date: student.class_details_approval_date || null,
+          id_print_date: student.id_print_date || null,
         }));
         setStudents(studentRecords);
         setSearchText('');
+        extractFilterOptions(studentRecords);
       } else {
         setStudents([]);
       }
@@ -397,20 +483,26 @@ const DashboardContent = () => {
     setFilterCriteria({ ...filterCriteria, level: selectedLevel, section_course: '' });
 
     if (selectedLevel) {
-      const filteredSections = [
-        ...new Set(
-          students
-            .filter((s) => s.level === selectedLevel)
-            .map((s) => s.section_course)
-            .filter(Boolean),
-        ),
+      let filteredSections = students;
+      if (filterCriteria.school_code) {
+        filteredSections = filteredSections.filter(
+          (s) => s.school_code === filterCriteria.school_code,
+        );
+      }
+      filteredSections = filteredSections.filter((s) => s.level === selectedLevel);
+      const sections = [
+        ...new Set(filteredSections.map((s) => s.section_course).filter(Boolean)),
       ].sort();
-      setSectionOptions(filteredSections);
+      setSectionOptions(sections);
     } else {
-      const allSections = [
-        ...new Set(students.map((s) => s.section_course).filter(Boolean)),
+      let allSections = students;
+      if (filterCriteria.school_code) {
+        allSections = allSections.filter((s) => s.school_code === filterCriteria.school_code);
+      }
+      const sections = [
+        ...new Set(allSections.map((s) => s.section_course).filter(Boolean)),
       ].sort();
-      setSectionOptions(allSections);
+      setSectionOptions(sections);
     }
   };
 
@@ -425,11 +517,14 @@ const DashboardContent = () => {
     setModalOpen(true);
   };
 
-  const handleCloseModal = () => setModalOpen(false);
-  const handleFilterClick = () => setFilterModalOpen(true);
-  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) =>
-    setSearchText(event.target.value);
-  const applyFilter = () => fetchFilteredStudents();
+  const handleCloseModal = () => {
+    setModalOpen(false);
+    setSelectedStudent(null);
+  };
+
+  const handleFilterClick = () => {
+    setFilterModalOpen(true);
+  };
 
   const handleFilterChange =
     (field: keyof FilterCriteria) =>
@@ -437,114 +532,25 @@ const DashboardContent = () => {
       setFilterCriteria({ ...filterCriteria, [field]: event.target.value });
     };
 
-  const handleApproveClick = (student: StudentRecord) => {
-    setStudentToApprove(student);
-    setIsCheckboxChecked(false);
-    setApproveModalOpen(true);
+  const applyFilter = () => {
+    fetchFilteredStudents();
   };
 
-  const handleConfirmApprove = async () => {
-    if (!isCheckboxChecked || !studentToApprove) return;
-
-    setUpdating(true);
-    try {
-      // Call the backend API to approve the student
-      const response = await post<{
-        success: boolean;
-        response?: string;
-        error?: string;
-      }>('/admin/students/approve', {
-        student_id: studentToApprove.student_id,
-        school_code: studentToApprove.school_code,
-      });
-
-      if (response.success) {
-        setApproveModalOpen(false);
-        setIsCheckboxChecked(false);
-
-        // Update the local state to reflect the approval
-        setStudents((prev) =>
-          prev.map((s) =>
-            s.id === studentToApprove.id ? { ...s, id_info_status: 'approved' } : s,
-          ),
-        );
-
-        Swal.fire({
-          icon: 'success',
-          title: 'Approved!',
-          text:
-            response.response ||
-            `Student ${studentToApprove.name_to_appear_on_id} has been approved successfully.`,
-          confirmButtonColor: '#2563eb',
-        });
-
-        setStudentToApprove(null);
-      } else {
-        throw new Error(response.error || 'Failed to approve student');
-      }
-    } catch (error: any) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Error!',
-        text: error.message || 'Failed to approve student',
-        confirmButtonColor: '#2563eb',
-      });
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const handleCloseApproveModal = () => {
-    setApproveModalOpen(false);
-    setStudentToApprove(null);
-    setIsCheckboxChecked(false);
-  };
-
-  const exportAllToExcel = () => {
-    if (filteredStudents.length === 0) {
-      alert('No data to export');
-      return;
-    }
-
-    const worksheetData = filteredStudents.map((student) => ({
-      'Student ID No.': student.student_id || '—',
-      'Last Name': student.last_name || '—',
-      'First Name': student.first_name || '—',
-      'Middle Initial': student.middle_initial || '—',
-      'Name to Appear on ID Card': student.name_to_appear_on_id || '—',
-      Level: student.level || '—',
-      'Section/Course': student.section_course || '—',
-      'Residential Address': student.present_address || '—',
-      Gender: student.gender || '—',
-      'Date of Birth': student.birth_date
-        ? new Date(student.birth_date).toISOString().split('T')[0]
-        : '—',
-      'Emergency Contact Person': student.emergency_contact?.split(' - ')[0] || '—',
-      'Emergency Contact Number': student.emergency_contact?.split(' - ')[1] || '—',
-      LRN: student.lrn || '—',
-      'ESC Grantee': student.esc_voucher_recipient ? 'Yes' : 'No',
-      'ESC Number': student.esc_number || '—',
-      'ID Info Status': student.id_info_status || '—',
-      'ID Info Approval Date': student.id_info_approval_date
-        ? new Date(student.id_info_approval_date).toISOString().split('T')[0]
-        : '—',
-      'Class Details Status': student.class_details_status || '—',
-      'Class Details Approval Date': student.class_details_approval_date
-        ? new Date(student.class_details_approval_date).toISOString().split('T')[0]
-        : '—',
-      'ID Print Status': student.id_print_status || '—',
-      'ID Print Date': student.id_print_date
-        ? new Date(student.id_print_date).toISOString().split('T')[0]
-        : '—',
-    }));
-
-    const ws = XLSX.utils.json_to_sheet(worksheetData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'All Students');
-    XLSX.writeFile(wb, `students_${new Date().toISOString().split('T')[0]}.xlsx`);
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchText(event.target.value);
   };
 
   const columns: GridColDef[] = [
+    {
+      field: 'school_code',
+      headerName: 'School Code',
+      width: 120,
+      renderCell: (params: GridRenderCellParams) => (
+        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+          {preserveCase(params.row.school_code)}
+        </Typography>
+      ),
+    },
     {
       field: 'student_id',
       headerName: 'Student ID No.',
@@ -561,10 +567,12 @@ const DashboardContent = () => {
       width: 200,
       renderCell: (params: GridRenderCellParams) => (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: '0.875rem' }}>
+          <Avatar sx={{ width: 32, height: 32, bgcolor: '#2563eb', fontSize: '0.875rem' }}>
             {params.row.name_to_appear_on_id?.charAt(0) || 'S'}
           </Avatar>
-          {params.row.name_to_appear_on_id}
+          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+            {preserveCase(params.row.name_to_appear_on_id)}
+          </Typography>
         </Box>
       ),
     },
@@ -573,7 +581,7 @@ const DashboardContent = () => {
       headerName: 'Level',
       width: 100,
       renderCell: (params: GridRenderCellParams) => (
-        <Typography variant="body2">{params.row.level || '—'}</Typography>
+        <Typography variant="body2">{preserveCase(params.row.level)}</Typography>
       ),
     },
     {
@@ -581,7 +589,7 @@ const DashboardContent = () => {
       headerName: 'Section/Course',
       width: 140,
       renderCell: (params: GridRenderCellParams) => (
-        <Typography variant="body2">{params.row.section_course || '—'}</Typography>
+        <Typography variant="body2">{preserveCase(params.row.section_course)}</Typography>
       ),
     },
     {
@@ -603,7 +611,7 @@ const DashboardContent = () => {
       width: 130,
       renderCell: (params: GridRenderCellParams) => (
         <Chip
-          label={params.row.id_info_status || '—'}
+          label={formatStatus(params.row.id_info_status)}
           color={getStatusColor(params.row.id_info_status) as any}
           size="small"
           sx={{ fontWeight: 500 }}
@@ -630,7 +638,7 @@ const DashboardContent = () => {
       width: 160,
       renderCell: (params: GridRenderCellParams) => (
         <Chip
-          label={params.row.class_details_status || '—'}
+          label={formatStatus(params.row.class_details_status)}
           color={getStatusColor(params.row.class_details_status) as any}
           size="small"
           sx={{ fontWeight: 500 }}
@@ -658,7 +666,7 @@ const DashboardContent = () => {
       width: 140,
       renderCell: (params: GridRenderCellParams) => (
         <Chip
-          label={params.row.id_print_status || '—'}
+          label={formatStatus(params.row.id_print_status)}
           color={getStatusColor(params.row.id_print_status) as any}
           size="small"
           sx={{ fontWeight: 500 }}
@@ -679,153 +687,297 @@ const DashboardContent = () => {
         });
       },
     },
-    {
-      field: 'actions',
-      headerName: 'Actions',
-      width: 100,
-      sortable: false,
-      renderCell: (params: GridRenderCellParams) => (
-        <Tooltip title="Approve Student">
-          <IconButton
-            onClick={(e) => {
-              e.stopPropagation();
-              handleApproveClick(params.row);
-            }}
-            disabled={params.row.id_info_status?.toLowerCase() === 'approved'}
-            sx={{
-              bgcolor:
-                params.row.id_info_status?.toLowerCase() === 'approved' ? '#94a3b8' : '#22c55e',
-              color: 'white',
-              '&:hover': {
-                bgcolor:
-                  params.row.id_info_status?.toLowerCase() === 'approved' ? '#94a3b8' : '#16a34a',
-              },
-              width: 36,
-              height: 36,
-            }}
-          >
-            <IconifyIcon icon="mdi:check" fontSize={20} />
-          </IconButton>
-        </Tooltip>
-      ),
-    },
   ];
 
-  if (loading) return <PageLoader />;
+  if (loading) {
+    return <PageLoader />;
+  }
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 3 } }}>
-      {/* Statistics Cards */}
+    <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+      {/* Statistics Cards - Row 1 */}
       <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: { xs: 3, sm: 4 } }}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
-            sx={{
-              borderRadius: 3,
-              boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-              border: '1px solid #e9edf4',
-              cursor: 'default',
-            }}
+            variant="outlined"
+            sx={{ borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
           >
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Stack direction="row" alignItems="center" justifyContent="space-between">
                 <Box>
-                  <Typography variant="subtitle2" sx={{ color: '#64748b', mb: 1 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block', mb: 0.5 }}
+                  >
                     Total Students
                   </Typography>
-                  <Typography variant="h4" sx={{ fontWeight: 700, color: '#1e293b' }}>
+                  <Typography
+                    variant="h4"
+                    sx={{
+                      fontWeight: 700,
+                      color: '#1e293b',
+                      fontSize: { xs: '1.5rem', sm: '2rem' },
+                    }}
+                  >
                     {statistics.total}
                   </Typography>
                 </Box>
-                <Avatar sx={{ bgcolor: '#eef2ff', color: '#2563eb' }}>
-                  <IconifyIcon icon="mdi:account-group" />
-                </Avatar>
+                <Box sx={{ bgcolor: '#e0e7ff', p: 1, borderRadius: 2 }}>
+                  <IconifyIcon icon="mdi:account-group" fontSize={24} color="#2563eb" />
+                </Box>
               </Stack>
             </CardContent>
           </Card>
         </Grid>
+
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
-            sx={{
-              borderRadius: 3,
-              boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-              border: '1px solid #e9edf4',
-              cursor: 'default',
-            }}
+            variant="outlined"
+            sx={{ borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
           >
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Stack direction="row" alignItems="center" justifyContent="space-between">
                 <Box>
-                  <Typography variant="subtitle2" sx={{ color: '#64748b', mb: 1 }}>
-                    Pending
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block', mb: 0.5 }}
+                  >
+                    Approved ID Info
                   </Typography>
-                  <Typography variant="h4" sx={{ fontWeight: 700, color: '#f59e0b' }}>
-                    {statistics.pending}
+                  <Typography
+                    variant="h4"
+                    sx={{
+                      fontWeight: 700,
+                      color: '#10b981',
+                      fontSize: { xs: '1.5rem', sm: '2rem' },
+                    }}
+                  >
+                    {statistics.approvedIdInfo}
                   </Typography>
                 </Box>
-                <Avatar sx={{ bgcolor: '#fef3c7', color: '#f59e0b' }}>
-                  <IconifyIcon icon="mdi:clock-outline" />
-                </Avatar>
+                <Box sx={{ bgcolor: '#d1fae5', p: 1, borderRadius: 2 }}>
+                  <IconifyIcon icon="mdi:check-circle" fontSize={24} color="#10b981" />
+                </Box>
               </Stack>
             </CardContent>
           </Card>
         </Grid>
+
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
-            sx={{
-              borderRadius: 3,
-              boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-              border: '1px solid #e9edf4',
-              cursor: 'default',
-            }}
+            variant="outlined"
+            sx={{ borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
           >
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Stack direction="row" alignItems="center" justifyContent="space-between">
                 <Box>
-                  <Typography variant="subtitle2" sx={{ color: '#64748b', mb: 1 }}>
-                    Approved
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block', mb: 0.5 }}
+                  >
+                    Pending ID Info
                   </Typography>
-                  <Typography variant="h4" sx={{ fontWeight: 700, color: '#10b981' }}>
-                    {statistics.approved}
+                  <Typography
+                    variant="h4"
+                    sx={{
+                      fontWeight: 700,
+                      color: '#f59e0b',
+                      fontSize: { xs: '1.5rem', sm: '2rem' },
+                    }}
+                  >
+                    {statistics.pendingIdInfo}
                   </Typography>
                 </Box>
-                <Avatar sx={{ bgcolor: '#d1fae5', color: '#10b981' }}>
-                  <IconifyIcon icon="mdi:check-circle" />
-                </Avatar>
+                <Box sx={{ bgcolor: '#fef3c7', p: 1, borderRadius: 2 }}>
+                  <IconifyIcon icon="mdi:clock-outline" fontSize={24} color="#f59e0b" />
+                </Box>
               </Stack>
             </CardContent>
           </Card>
         </Grid>
+
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
-            sx={{
-              borderRadius: 3,
-              boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-              border: '1px solid #e9edf4',
-              cursor: 'default',
-            }}
+            variant="outlined"
+            sx={{ borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
           >
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Stack direction="row" alignItems="center" justifyContent="space-between">
                 <Box>
-                  <Typography variant="subtitle2" sx={{ color: '#64748b', mb: 1 }}>
-                    Declined
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block', mb: 0.5 }}
+                  >
+                    Approved Class Details
                   </Typography>
-                  <Typography variant="h4" sx={{ fontWeight: 700, color: '#ef4444' }}>
-                    {statistics.declined}
+                  <Typography
+                    variant="h4"
+                    sx={{
+                      fontWeight: 700,
+                      color: '#10b981',
+                      fontSize: { xs: '1.5rem', sm: '2rem' },
+                    }}
+                  >
+                    {statistics.approvedClassDetails}
                   </Typography>
                 </Box>
-                <Avatar sx={{ bgcolor: '#fee2e2', color: '#ef4444' }}>
-                  <IconifyIcon icon="mdi:close-circle" />
-                </Avatar>
+                <Box sx={{ bgcolor: '#d1fae5', p: 1, borderRadius: 2 }}>
+                  <IconifyIcon icon="mdi:check-circle" fontSize={24} color="#10b981" />
+                </Box>
               </Stack>
             </CardContent>
           </Card>
         </Grid>
       </Grid>
 
-      {/* Search and Filter Bar */}
-      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" sx={{ mb: 3 }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+      {/* Statistics Cards - Row 2 */}
+      <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: { xs: 3, sm: 4 } }}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Card
+            variant="outlined"
+            sx={{ borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
+          >
+            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+              <Stack direction="row" alignItems="center" justifyContent="space-between">
+                <Box>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block', mb: 0.5 }}
+                  >
+                    Pending Class Details
+                  </Typography>
+                  <Typography
+                    variant="h4"
+                    sx={{
+                      fontWeight: 700,
+                      color: '#f59e0b',
+                      fontSize: { xs: '1.5rem', sm: '2rem' },
+                    }}
+                  >
+                    {statistics.pendingClassDetails}
+                  </Typography>
+                </Box>
+                <Box sx={{ bgcolor: '#fef3c7', p: 1, borderRadius: 2 }}>
+                  <IconifyIcon icon="mdi:clock-outline" fontSize={24} color="#f59e0b" />
+                </Box>
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Card
+            variant="outlined"
+            sx={{ borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
+          >
+            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+              <Stack direction="row" alignItems="center" justifyContent="space-between">
+                <Box>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block', mb: 0.5 }}
+                  >
+                    Printed IDs
+                  </Typography>
+                  <Typography
+                    variant="h4"
+                    sx={{
+                      fontWeight: 700,
+                      color: '#10b981',
+                      fontSize: { xs: '1.5rem', sm: '2rem' },
+                    }}
+                  >
+                    {statistics.printedIds}
+                  </Typography>
+                </Box>
+                <Box sx={{ bgcolor: '#d1fae5', p: 1, borderRadius: 2 }}>
+                  <IconifyIcon icon="mdi:printer" fontSize={24} color="#10b981" />
+                </Box>
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Card
+            variant="outlined"
+            sx={{ borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
+          >
+            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+              <Stack direction="row" alignItems="center" justifyContent="space-between">
+                <Box>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block', mb: 0.5 }}
+                  >
+                    Total Pending IDs
+                  </Typography>
+                  <Typography
+                    variant="h4"
+                    sx={{
+                      fontWeight: 700,
+                      color: '#f59e0b',
+                      fontSize: { xs: '1.5rem', sm: '2rem' },
+                    }}
+                  >
+                    {statistics.totalPendingIds}
+                  </Typography>
+                </Box>
+                <Box sx={{ bgcolor: '#fef3c7', p: 1, borderRadius: 2 }}>
+                  <IconifyIcon icon="mdi:printer-alert" fontSize={24} color="#f59e0b" />
+                </Box>
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Card
+            variant="outlined"
+            sx={{ borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
+          >
+            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+              <Stack direction="row" alignItems="center" justifyContent="space-between">
+                <Box>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block', mb: 0.5 }}
+                  >
+                    Total Reprinted IDs
+                  </Typography>
+                  <Typography
+                    variant="h4"
+                    sx={{
+                      fontWeight: 700,
+                      color: '#8b5cf6',
+                      fontSize: { xs: '1.5rem', sm: '2rem' },
+                    }}
+                  >
+                    {statistics.totalReprintedIds}
+                  </Typography>
+                </Box>
+                <Box sx={{ bgcolor: '#ede9fe', p: 1, borderRadius: 2 }}>
+                  <IconifyIcon icon="mdi:refresh" fontSize={24} color="#8b5cf6" />
+                </Box>
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      {/* Search and Filter Bar - NO EXPORT BUTTONS */}
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        justifyContent="space-between"
+        alignItems={{ xs: 'stretch', sm: 'center' }}
+        spacing={{ xs: 2, sm: 0 }}
+        sx={{ mb: 3 }}
+      >
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={2}
+          sx={{ width: { xs: '100%', sm: 'auto' } }}
+        >
           <TextField
             placeholder="Search..."
             value={searchText}
@@ -835,19 +987,11 @@ const DashboardContent = () => {
             fullWidth={isMobile}
             sx={{
               width: { xs: '100%', sm: 300 },
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 2,
-                backgroundColor: '#fff',
-                height: 40,
-              },
-              '& .MuiInputBase-input': {
-                py: 1,
-                px: 1.5,
-              },
+              '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: '#fff', height: 40 },
             }}
             InputProps={{
               startAdornment: (
-                <InputAdornment position="start" sx={{ ml: 0.5 }}>
+                <InputAdornment position="start">
                   <IconifyIcon icon="mdi:magnify" fontSize={20} color="#64748b" />
                 </InputAdornment>
               ),
@@ -857,20 +1001,15 @@ const DashboardContent = () => {
             variant="outlined"
             startIcon={<IconifyIcon icon="mdi:filter" />}
             onClick={handleFilterClick}
-          >
-            Filter Records
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={<IconifyIcon icon="mdi:file-excel" />}
-            onClick={exportAllToExcel}
+            fullWidth={isMobile}
             sx={{
               textTransform: 'none',
-              bgcolor: '#2563eb',
-              '&:hover': { bgcolor: '#1d4ed8' },
+              borderColor: '#e2e8f0',
+              color: '#475569',
+              '&:hover': { borderColor: '#94a3b8', bgcolor: '#f8fafc' },
             }}
           >
-            Export
+            Filter Records
           </Button>
         </Stack>
       </Stack>
@@ -882,7 +1021,6 @@ const DashboardContent = () => {
         title="Filter Student Records"
         maxWidth={700}
         disableBackdropClick={true}
-        disableEscapeKeyDown={true}
         showLoading={filterLoading}
         loadingTitle="Applying filter..."
         actions={[
@@ -907,7 +1045,22 @@ const DashboardContent = () => {
             direction="column"
             sx={{ mt: 1, maxHeight: '70vh', overflowY: 'auto', pr: 1 }}
           >
-            {/* b. Student ID No. */}
+            <FormControl fullWidth size="small">
+              <InputLabel>School Code</InputLabel>
+              <Select
+                value={filterCriteria.school_code}
+                label="School Code"
+                onChange={handleFilterChange('school_code')}
+              >
+                <MenuItem value="">All</MenuItem>
+                {schoolCodeOptions.map((code) => (
+                  <MenuItem key={code} value={code}>
+                    {code.toUpperCase()}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
             <TextField
               fullWidth
               size="small"
@@ -917,7 +1070,6 @@ const DashboardContent = () => {
               onChange={handleFilterChange('student_id')}
             />
 
-            {/* c. Student Type */}
             <FormControl fullWidth size="small">
               <InputLabel>Student Type</InputLabel>
               <Select
@@ -931,7 +1083,6 @@ const DashboardContent = () => {
               </Select>
             </FormControl>
 
-            {/* d. Level */}
             <FormControl fullWidth size="small">
               <InputLabel>Level</InputLabel>
               <Select value={filterCriteria.level} label="Level" onChange={handleLevelChange}>
@@ -944,14 +1095,12 @@ const DashboardContent = () => {
               </Select>
             </FormControl>
 
-            {/* e. Section/Course */}
             <FormControl fullWidth size="small">
               <InputLabel>Section/Course</InputLabel>
               <Select
                 value={filterCriteria.section_course}
                 label="Section/Course"
                 onChange={handleFilterChange('section_course')}
-                disabled={!filterCriteria.level}
               >
                 <MenuItem value="">All</MenuItem>
                 {sectionOptions.map((section) => (
@@ -962,7 +1111,6 @@ const DashboardContent = () => {
               </Select>
             </FormControl>
 
-            {/* f. ID Info Status */}
             <FormControl fullWidth size="small">
               <InputLabel>ID Info Status</InputLabel>
               <Select
@@ -976,7 +1124,6 @@ const DashboardContent = () => {
               </Select>
             </FormControl>
 
-            {/* g. Class Details Status */}
             <FormControl fullWidth size="small">
               <InputLabel>Class Details Status</InputLabel>
               <Select
@@ -990,7 +1137,6 @@ const DashboardContent = () => {
               </Select>
             </FormControl>
 
-            {/* h. ID Printing Status */}
             <FormControl fullWidth size="small">
               <InputLabel>ID Printing Status</InputLabel>
               <Select
@@ -1004,7 +1150,6 @@ const DashboardContent = () => {
               </Select>
             </FormControl>
 
-            {/* i. ID Reprint Status */}
             <FormControl fullWidth size="small">
               <InputLabel>ID Reprint Status</InputLabel>
               <Select
@@ -1020,7 +1165,6 @@ const DashboardContent = () => {
 
             <Divider />
 
-            {/* j. Approved ID Info Date Range */}
             <Typography variant="subtitle2" sx={{ color: '#64748b', fontWeight: 500 }}>
               Approved ID Info Date Range
             </Typography>
@@ -1045,7 +1189,6 @@ const DashboardContent = () => {
               />
             </Stack>
 
-            {/* k. Approved Class Details Date Range */}
             <Typography variant="subtitle2" sx={{ color: '#64748b', fontWeight: 500 }}>
               Approved Class Details Date Range
             </Typography>
@@ -1070,7 +1213,6 @@ const DashboardContent = () => {
               />
             </Stack>
 
-            {/* l. Enrollment Date Range */}
             <Typography variant="subtitle2" sx={{ color: '#64748b', fontWeight: 500 }}>
               Enrollment Date Range
             </Typography>
@@ -1098,7 +1240,7 @@ const DashboardContent = () => {
         }
       />
 
-      {/* DataGrid */}
+      {/* DataGrid - NO CHECKBOX SELECTION for Admin */}
       <Paper
         elevation={0}
         sx={{ borderRadius: 3, border: '1px solid #e9edf4', overflow: 'hidden' }}
@@ -1110,10 +1252,7 @@ const DashboardContent = () => {
           pageSizeOptions={isMobile ? [5, 10, 25] : [10, 25, 50]}
           initialState={{
             pagination: { paginationModel: { pageSize: isMobile ? 5 : 10 } },
-            // ✅ Default sorting by Student Name (alphabetically ascending)
-            sorting: {
-              sortModel: [{ field: 'name_to_appear_on_id', sort: 'asc' }],
-            },
+            sorting: { sortModel: [{ field: 'name_to_appear_on_id', sort: 'asc' }] },
           }}
           onRowClick={handleRowClick}
           slots={{
@@ -1121,23 +1260,12 @@ const DashboardContent = () => {
           }}
           sx={{
             border: 'none',
-            '& .MuiDataGrid-cell:focus': {
-              outline: 'none',
-            },
+            '& .MuiDataGrid-cell:focus': { outline: 'none' },
             '& .MuiDataGrid-columnHeaders': {
-              backgroundColor: '#f8fafc',
+              bgcolor: '#f8fafc',
               borderBottom: '1px solid #e9edf4',
-              minHeight: { xs: 48, sm: 56 },
             },
-            '& .MuiDataGrid-row': {
-              cursor: 'pointer',
-              '&:hover': {
-                backgroundColor: '#f5f5f5',
-              },
-            },
-            '& .MuiDataGrid-cell': {
-              fontSize: { xs: '0.75rem', sm: '0.875rem' },
-            },
+            '& .MuiDataGrid-row': { cursor: 'pointer', '&:hover': { bgcolor: '#f5f5f5' } },
           }}
         />
       </Paper>
@@ -1150,72 +1278,112 @@ const DashboardContent = () => {
         maxWidth={600}
         hideCloseButton={false}
         disableBackdropClick={true}
-        disableEscapeKeyDown={true}
         content={
           selectedStudent && (
             <Stack spacing={3} direction="column">
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Avatar
                   sx={{
-                    width: 64,
-                    height: 64,
+                    width: { xs: 64, sm: 80 },
+                    height: { xs: 64, sm: 80 },
                     bgcolor: '#2563eb',
-                    fontSize: '1.5rem',
+                    fontSize: { xs: '1.5rem', sm: '2rem' },
                     fontWeight: 600,
                   }}
                 >
                   {selectedStudent.name_to_appear_on_id?.charAt(0) || 'S'}
                 </Avatar>
                 <Box>
-                  <Typography variant="h5" sx={{ fontWeight: 600 }}>
-                    {selectedStudent.name_to_appear_on_id}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: '#64748b' }}>
-                    Student ID: {selectedStudent.student_id}
+                  <Typography
+                    variant="h5"
+                    sx={{ fontWeight: 600, fontSize: { xs: '1.25rem', sm: '1.5rem' } }}
+                  >
+                    {preserveCase(selectedStudent.name_to_appear_on_id)}
                   </Typography>
                 </Box>
               </Box>
+
               <Grid container spacing={2}>
-                <Grid size={12}>
+                {/* Personal Information */}
+                <Grid size={{ xs: 12 }}>
                   <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2563eb', mb: 1 }}>
                     A. Personal Information
                   </Typography>
                 </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     First Name
                   </Typography>
-                  <Typography>{selectedStudent.first_name}</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {formatName(selectedStudent.first_name)}
+                  </Typography>
                 </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     Middle Initial
                   </Typography>
-                  <Typography>{selectedStudent.middle_initial || '—'}</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {formatMiddleInitial(selectedStudent.middle_initial)}
+                  </Typography>
                 </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     Last Name
                   </Typography>
-                  <Typography>{selectedStudent.last_name}</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {formatName(selectedStudent.last_name)}
+                  </Typography>
                 </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     Suffix Name
                   </Typography>
-                  <Typography>{selectedStudent.suffix || '—'}</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {formatName(selectedStudent.suffix)}
+                  </Typography>
                 </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     Nickname
                   </Typography>
-                  <Typography>{selectedStudent.nick_name || '—'}</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {formatName(selectedStudent.nick_name)}
+                  </Typography>
                 </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
+                    LRN
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {selectedStudent.lrn || '—'}
+                  </Typography>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     Date of Birth
                   </Typography>
-                  <Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
                     {selectedStudent.birth_date
                       ? new Date(selectedStudent.birth_date).toLocaleDateString('en-US', {
                           year: 'numeric',
@@ -1225,93 +1393,145 @@ const DashboardContent = () => {
                       : '—'}
                   </Typography>
                 </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     Gender
                   </Typography>
-                  <Typography>{selectedStudent.gender || '—'}</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {selectedStudent.gender ? capitalizeFirstLetter(selectedStudent.gender) : '—'}
+                  </Typography>
                 </Grid>
-                <Grid size={12}>
-                  <Divider sx={{ my: 1 }} />
+
+                <Grid size={{ xs: 12 }}>
+                  <Divider sx={{ borderColor: '#e9edf4', my: 1 }} />
                 </Grid>
-                <Grid size={12}>
+
+                {/* School Information */}
+                <Grid size={{ xs: 12 }}>
                   <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2563eb', mb: 1 }}>
                     B. School Information
                   </Typography>
                 </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     Level
                   </Typography>
-                  <Typography>{selectedStudent.level || '—'}</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {preserveCase(selectedStudent.level)}
+                  </Typography>
                 </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     Section/Course
                   </Typography>
-                  <Typography>{selectedStudent.section_course || '—'}</Typography>
-                </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
-                    LRN
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {preserveCase(selectedStudent.section_course)}
                   </Typography>
-                  <Typography>{selectedStudent.lrn || '—'}</Typography>
                 </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     Student Type
                   </Typography>
-                  <Typography>
-                    {selectedStudent.student_type === 'new' ? 'New Student' : 'Old Student'}
-                  </Typography>
+                  <Chip
+                    label={formatStudentType(selectedStudent.student_type)}
+                    color={getStudentTypeColor(selectedStudent.student_type) as any}
+                    size="small"
+                    sx={{ fontWeight: 500, mt: 0.5 }}
+                  />
                 </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     ESC Voucher
                   </Typography>
-                  <Typography>{selectedStudent.esc_voucher_recipient ? 'Yes' : 'No'}</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {selectedStudent.esc_voucher_recipient ? 'Yes' : 'No'}
+                  </Typography>
                 </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     ESC Number
                   </Typography>
-                  <Typography>{selectedStudent.esc_number || '—'}</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {selectedStudent.esc_number || '—'}
+                  </Typography>
                 </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     Enrollment Date
                   </Typography>
-                  <Typography>
-                    {new Date(selectedStudent.created_at).toLocaleDateString()}
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {new Date(selectedStudent.created_at).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    })}
                   </Typography>
                 </Grid>
-                <Grid size={12}>
-                  <Divider sx={{ my: 1 }} />
+
+                <Grid size={{ xs: 12 }}>
+                  <Divider sx={{ borderColor: '#e9edf4', my: 1 }} />
                 </Grid>
-                <Grid size={12}>
+
+                {/* ID Application Status */}
+                <Grid size={{ xs: 12 }}>
                   <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2563eb', mb: 1 }}>
-                    C. ID Application Status {/* ✅ Changed from "Application Status" */}
+                    C. ID Application Status
                   </Typography>
                 </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
+                    Name to Appear on ID Card
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {preserveCase(selectedStudent.name_to_appear_on_id)}
+                  </Typography>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     ID Info Status
                   </Typography>
-                  <div>
-                    <Chip
-                      label={selectedStudent.id_info_status || '—'}
-                      color={getStatusColor(selectedStudent.id_info_status) as any}
-                      size="small"
-                      sx={{ fontWeight: 500, mt: 0.5 }}
-                    />
-                  </div>
+                  <Chip
+                    label={formatStatus(selectedStudent.id_info_status)}
+                    color={getStatusColor(selectedStudent.id_info_status) as any}
+                    size="small"
+                    sx={{ fontWeight: 500, mt: 0.5 }}
+                  />
                 </Grid>
-                {/* ✅ Added ID Info Approval Date */}
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     ID Info Approval Date
                   </Typography>
-                  <Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
                     {selectedStudent.id_info_approval_date
                       ? new Date(selectedStudent.id_info_approval_date).toLocaleDateString(
                           'en-US',
@@ -1324,25 +1544,28 @@ const DashboardContent = () => {
                       : '—'}
                   </Typography>
                 </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     Class Details Status
                   </Typography>
-                  <div>
-                    <Chip
-                      label={selectedStudent.class_details_status || '—'}
-                      color={getStatusColor(selectedStudent.class_details_status) as any}
-                      size="small"
-                      sx={{ fontWeight: 500, mt: 0.5 }}
-                    />
-                  </div>
+                  <Chip
+                    label={formatStatus(selectedStudent.class_details_status)}
+                    color={getStatusColor(selectedStudent.class_details_status) as any}
+                    size="small"
+                    sx={{ fontWeight: 500, mt: 0.5 }}
+                  />
                 </Grid>
-                {/* ✅ Added Class Details Approval Date */}
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     Class Details Approval Date
                   </Typography>
-                  <Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
                     {selectedStudent.class_details_approval_date
                       ? new Date(selectedStudent.class_details_approval_date).toLocaleDateString(
                           'en-US',
@@ -1355,25 +1578,28 @@ const DashboardContent = () => {
                       : '—'}
                   </Typography>
                 </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     ID Print Status
                   </Typography>
-                  <div>
-                    <Chip
-                      label={selectedStudent.id_print_status || '—'}
-                      color={getStatusColor(selectedStudent.id_print_status) as any}
-                      size="small"
-                      sx={{ fontWeight: 500, mt: 0.5 }}
-                    />
-                  </div>
+                  <Chip
+                    label={formatStatus(selectedStudent.id_print_status)}
+                    color={getStatusColor(selectedStudent.id_print_status) as any}
+                    size="small"
+                    sx={{ fontWeight: 500, mt: 0.5 }}
+                  />
                 </Grid>
-                {/* ✅ Added ID Printing Date */}
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
-                    ID Printing Date
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
+                    ID Print Date
                   </Typography>
-                  <Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
                     {selectedStudent.id_print_date
                       ? new Date(selectedStudent.id_print_date).toLocaleDateString('en-US', {
                           year: 'numeric',
@@ -1383,215 +1609,73 @@ const DashboardContent = () => {
                       : '—'}
                   </Typography>
                 </Grid>
-                <Grid size={12}>
-                  <Divider sx={{ my: 1 }} />
+
+                <Grid size={{ xs: 12 }}>
+                  <Divider sx={{ borderColor: '#e9edf4', my: 1 }} />
                 </Grid>
-                <Grid size={12}>
+
+                {/* Parent/Guardian Information */}
+                <Grid size={{ xs: 12 }}>
                   <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2563eb', mb: 1 }}>
                     D. Parent/Guardian Information
                   </Typography>
                 </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     Parent/Guardian Name
                   </Typography>
-                  <Typography>{selectedStudent.parent_full_name || 'Not provided'}</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {selectedStudent.parent_full_name || 'Not provided'}
+                  </Typography>
                 </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     Parent/Guardian Email
                   </Typography>
-                  <Typography>{selectedStudent.parent_email || 'Not provided'}</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {selectedStudent.parent_email || 'Not provided'}
+                  </Typography>
                 </Grid>
-                <Grid size={12}>
-                  <Divider sx={{ my: 1 }} />
+
+                <Grid size={{ xs: 12 }}>
+                  <Divider sx={{ borderColor: '#e9edf4', my: 1 }} />
                 </Grid>
-                <Grid size={12}>
+
+                {/* Address & Contact Information */}
+                <Grid size={{ xs: 12 }}>
                   <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2563eb', mb: 1 }}>
                     E. Address & Contact Information
                   </Typography>
                 </Grid>
-                <Grid size={12}>
-                  <Typography variant="caption" fontWeight={600}>
+                <Grid size={{ xs: 12 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     Residential Address
                   </Typography>
-                  <Typography>{selectedStudent.present_address || 'Not provided'}</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {preserveCase(selectedStudent.present_address) || 'Not provided'}
+                  </Typography>
                 </Grid>
-                <Grid size={12}>
-                  <Typography variant="caption" fontWeight={600}>
+                <Grid size={{ xs: 12 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
                     Emergency Contact Person and Number
                   </Typography>
-                  <Typography>{selectedStudent.emergency_contact || 'Not provided'}</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {selectedStudent.emergency_contact || 'Not provided'}
+                  </Typography>
                 </Grid>
               </Grid>
-            </Stack>
-          )
-        }
-      />
-
-      {/* Approve Confirmation Modal */}
-      <Dialog
-        open={approveModalOpen}
-        onClose={handleCloseApproveModal}
-        title="Confirm Student Approval"
-        maxWidth={600}
-        hideCloseButton={false}
-        disableBackdropClick={true}
-        disableEscapeKeyDown={true}
-        actions={[
-          {
-            label: 'Cancel',
-            onClick: handleCloseApproveModal,
-            color: 'secondary',
-            variant: 'outlined',
-          },
-          {
-            label: updating ? 'Approving...' : 'Approve',
-            onClick: handleConfirmApprove,
-            color: 'success',
-            variant: 'contained',
-            disabled: !isCheckboxChecked || updating,
-            startIcon: 'mdi:check-circle',
-          },
-        ]}
-        content={
-          studentToApprove && (
-            <Stack spacing={3} direction="column">
-              <Typography variant="body1" sx={{ color: '#1e293b', fontWeight: 600 }}>
-                Please review the student information below before approving.
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Avatar sx={{ width: 56, height: 56, bgcolor: '#2563eb' }}>
-                  {studentToApprove.name_to_appear_on_id?.charAt(0) || 'S'}
-                </Avatar>
-                <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                    {studentToApprove.name_to_appear_on_id}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: '#64748b' }}>
-                    Student ID: {studentToApprove.student_id}
-                  </Typography>
-                </Box>
-              </Box>
-              <Grid container spacing={2}>
-                <Grid size={12}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#2563eb' }}>
-                    Personal Information
-                  </Typography>
-                </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
-                    First Name
-                  </Typography>
-                  <Typography>{studentToApprove.first_name}</Typography>
-                </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
-                    Middle Initial
-                  </Typography>
-                  <Typography>{studentToApprove.middle_initial || '—'}</Typography>
-                </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
-                    Last Name
-                  </Typography>
-                  <Typography>{studentToApprove.last_name}</Typography>
-                </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
-                    Suffix
-                  </Typography>
-                  <Typography>{studentToApprove.suffix || '—'}</Typography>
-                </Grid>
-                <Grid size={12}>
-                  <Divider />
-                </Grid>
-                <Grid size={12}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#2563eb' }}>
-                    School Information
-                  </Typography>
-                </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
-                    Level
-                  </Typography>
-                  <Typography>{studentToApprove.level || '—'}</Typography>
-                </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
-                    Section/Course
-                  </Typography>
-                  <Typography>{studentToApprove.section_course || '—'}</Typography>
-                </Grid>
-                <Grid size={12}>
-                  <Divider />
-                </Grid>
-                <Grid size={12}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#2563eb' }}>
-                    C. ID Application Status
-                  </Typography>
-                </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
-                    ID Info Status
-                  </Typography>
-                  <Chip
-                    label={studentToApprove.id_info_status || '—'}
-                    color={getStatusColor(studentToApprove.id_info_status) as any}
-                    size="small"
-                    sx={{ fontWeight: 500, mt: 0.5 }}
-                  />
-                </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
-                    Class Details Status
-                  </Typography>
-                  <Chip
-                    label={studentToApprove.class_details_status || '—'}
-                    color={getStatusColor(studentToApprove.class_details_status) as any}
-                    size="small"
-                    sx={{ fontWeight: 500, mt: 0.5 }}
-                  />
-                </Grid>
-                <Grid size={12}>
-                  <Divider />
-                </Grid>
-                <Grid size={12}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#2563eb' }}>
-                    Parent/Guardian Information
-                  </Typography>
-                </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
-                    Parent/Guardian Name
-                  </Typography>
-                  <Typography>{studentToApprove.parent_full_name || 'Not provided'}</Typography>
-                </Grid>
-                <Grid size={6}>
-                  <Typography variant="caption" fontWeight={600}>
-                    Parent/Guardian Email
-                  </Typography>
-                  <Typography>{studentToApprove.parent_email || 'Not provided'}</Typography>
-                </Grid>
-              </Grid>
-              <Stack direction="row" alignItems="center" spacing={1}>
-                <input
-                  type="checkbox"
-                  id="approveConfirm"
-                  checked={isCheckboxChecked}
-                  onChange={(e) => setIsCheckboxChecked(e.target.checked)}
-                  style={{ width: 18, height: 18, cursor: 'pointer' }}
-                />
-                <Typography
-                  variant="body2"
-                  component="label"
-                  htmlFor="approveConfirm"
-                  sx={{ cursor: 'pointer' }}
-                >
-                  I confirm that this student's information is correct and I approve this
-                  registration.
-                </Typography>
-              </Stack>
             </Stack>
           )
         }
