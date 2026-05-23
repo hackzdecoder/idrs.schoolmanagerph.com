@@ -59,6 +59,7 @@ interface StudentRecord {
   residential_address?: string | null;
   emergency_contact_person?: string | null;
   emergency_contact_number?: string | null;
+  surname?: string;
 }
 
 interface StudentDetailsProps {
@@ -68,50 +69,9 @@ interface StudentDetailsProps {
 }
 
 // Helper function to get student photo URL
-// Pattern: https://schoolmanagerph.com/idrs-school-ids/{school_code}/{student_id}_{surname}.jpg
 const getStudentPhotoUrl = (schoolCode: string, studentId: string, surname: string): string => {
   if (!schoolCode || !studentId || !surname) return '';
   return `https://schoolmanagerph.com/idrs-school-ids/${schoolCode}/${studentId}_${surname}.jpg`;
-};
-
-// Helper functions
-const formatMiddleInitialOnBlur = (value: string): string => {
-  if (!value) return '';
-  let formatted = value.trim();
-  if (formatted.length === 0) return '';
-  formatted = formatted.charAt(0).toUpperCase() + formatted.slice(1);
-  if (!formatted.includes('.')) {
-    formatted += '.';
-  }
-  return formatted;
-};
-
-const generateNameToAppearOnId = (
-  firstName: string,
-  middleInitial: string,
-  lastName: string,
-): string => {
-  const first = firstName.trim();
-  const middle = middleInitial.trim();
-  const last = lastName.trim();
-  if (!first && !last) return '';
-  let result = last;
-  if (first) {
-    result += result ? `, ${first}` : first;
-  }
-  if (middle) {
-    if (middle.includes('.')) {
-      const cleanMiddle = middle.replace(/\.+$/, '');
-      result += ` ${cleanMiddle}.`;
-    } else {
-      result += ` ${middle}.`;
-    }
-  }
-  return result;
-};
-
-const isValidPhoneNumber = (phoneNumber: string): boolean => {
-  return /^\d{11}$/.test(phoneNumber);
 };
 
 const formatDate = (dateString: string | null | undefined): string => {
@@ -126,6 +86,22 @@ const formatDate = (dateString: string | null | undefined): string => {
     }
   }
   return dateString.substring(0, 10);
+};
+
+// Format helpers (following DashboardContent style)
+const capitalizeFirstLetter = (text: string): string => {
+  if (!text) return '';
+  return text.charAt(0).toUpperCase() + text.slice(1);
+};
+
+const formatName = (name: string | null | undefined): string => {
+  if (!name) return '—';
+  return name;
+};
+
+const preserveOriginalCase = (text: string | null | undefined): string => {
+  if (!text) return '—';
+  return text;
 };
 
 const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpdate }) => {
@@ -143,7 +119,8 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
       ? getStudentPhotoUrl(student.school_code, student.student_id, student.last_name)
       : '';
 
-  const [editableData, setEditableData] = useState({
+  // Student data for display (read-only fields)
+  const studentData = {
     first_name: student?.first_name || '',
     middle_initial: student?.middle_initial || '',
     surname: student?.last_name || '',
@@ -167,75 +144,20 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
     lrn: student?.lrn || '',
     student_type: student?.student_type || '',
     email: student?.email || '',
-  });
-
-  const handleFieldChange = (field: string, value: string | boolean) => {
-    // Don't allow editing if class details is already approved
-    if (isClassDetailsApproved) return;
-
-    let processedValue = value;
-
-    if (typeof value === 'string') {
-      if (
-        ['first_name', 'emergency_contact_person', 'parent_first_name', 'parent_surname'].includes(
-          field,
-        )
-      ) {
-        if (value.length > 0) {
-          processedValue = value.charAt(0).toUpperCase() + value.slice(1);
-        }
-      }
-
-      if (field === 'middle_initial') {
-        processedValue = value;
-      }
-
-      if (['surname', 'nick_name'].includes(field)) {
-        processedValue = value
-          .split(' ')
-          .map((word) => (word.length > 0 ? word.charAt(0).toUpperCase() + word.slice(1) : ''))
-          .join(' ');
-      }
-
-      if (field === 'emergency_contact_number') {
-        processedValue = value.replace(/[^0-9]/g, '');
-        if (processedValue.length > 11) {
-          processedValue = processedValue.slice(0, 11);
-        }
-      }
-    }
-
-    setEditableData((prev) => {
-      const newData = { ...prev, [field]: processedValue };
-
-      if (field === 'first_name' || field === 'middle_initial' || field === 'surname') {
-        const firstName = field === 'first_name' ? processedValue : prev.first_name;
-        const middleInitial = field === 'middle_initial' ? processedValue : prev.middle_initial;
-        const lastName = field === 'surname' ? processedValue : prev.surname;
-        const generatedName = generateNameToAppearOnId(
-          firstName as string,
-          middleInitial as string,
-          lastName as string,
-        );
-        newData.name_to_appear_on_id = generatedName;
-      }
-
-      return newData;
-    });
   };
 
-  const handleMiddleInitialBlur = () => {
-    if (isClassDetailsApproved) return;
+  // Editable school information state
+  const [editableSchoolData, setEditableSchoolData] = useState({
+    level: studentData.level,
+    section_course: studentData.section_course,
+    lrn: studentData.lrn,
+    esc_voucher_recipient: studentData.esc_voucher_recipient,
+    esc_number: studentData.esc_number,
+  });
 
-    const formatted = formatMiddleInitialOnBlur(editableData.middle_initial);
-    if (formatted !== editableData.middle_initial) {
-      setEditableData((prev) => {
-        const newData = { ...prev, middle_initial: formatted };
-        const generatedName = generateNameToAppearOnId(prev.first_name, formatted, prev.surname);
-        newData.name_to_appear_on_id = generatedName;
-        return newData;
-      });
-    }
+  const handleSchoolFieldChange = (field: string, value: string | boolean) => {
+    if (isClassDetailsApproved) return;
+    setEditableSchoolData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleCloseModal = () => {
@@ -243,7 +165,6 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
     setIsCheckboxChecked(false);
   };
 
-  // Save school information to backend - ONLY updates student_id_info table
   const saveSchoolInformation = async (): Promise<boolean> => {
     if (!student?.id) {
       Swal.fire({
@@ -255,35 +176,24 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
       return false;
     }
 
-    // Prepare update data - send ALL school fields
     const updateData: Record<string, any> = {};
 
-    // Always send level
-    if (editableData.level !== student?.level) {
-      updateData.level = editableData.level;
+    if (editableSchoolData.level !== student?.level) {
+      updateData.level = editableSchoolData.level;
+    }
+    if (editableSchoolData.section_course !== student?.section_course) {
+      updateData.section_course = editableSchoolData.section_course;
+    }
+    if (editableSchoolData.lrn !== student?.lrn) {
+      updateData.lrn = editableSchoolData.lrn;
+    }
+    if (editableSchoolData.esc_voucher_recipient !== student?.esc_voucher_recipient) {
+      updateData.esc_voucher_recipient = editableSchoolData.esc_voucher_recipient;
+    }
+    if (editableSchoolData.esc_number !== student?.esc_number) {
+      updateData.esc_number = editableSchoolData.esc_number || '';
     }
 
-    // Always send section_course
-    if (editableData.section_course !== student?.section_course) {
-      updateData.section_course = editableData.section_course;
-    }
-
-    // Always send lrn
-    if (editableData.lrn !== student?.lrn) {
-      updateData.lrn = editableData.lrn;
-    }
-
-    // Always send esc_voucher_recipient
-    if (editableData.esc_voucher_recipient !== student?.esc_voucher_recipient) {
-      updateData.esc_voucher_recipient = editableData.esc_voucher_recipient;
-    }
-
-    // Always send esc_number (even if empty)
-    if (editableData.esc_number !== student?.esc_number) {
-      updateData.esc_number = editableData.esc_number || '';
-    }
-
-    // If no changes, return true without API call
     if (Object.keys(updateData).length === 0) {
       return true;
     }
@@ -304,17 +214,15 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
       Swal.fire({
         icon: 'error',
         title: 'Update Failed',
-        text: 'Failed to save school information. Check console for details.',
+        text: 'Failed to save school information.',
         confirmButtonColor: '#2563eb',
       });
       return false;
     }
   };
 
-  const handleConfirmApprove = async () => {
+  const handleConfirmEnrollment = async () => {
     if (!isCheckboxChecked) return;
-
-    // Guard clause - ensure student exists
     if (!student) {
       Swal.fire({
         icon: 'error',
@@ -325,7 +233,6 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
       return;
     }
 
-    // Check if already approved
     if (isClassDetailsApproved) {
       Swal.fire({
         icon: 'info',
@@ -336,51 +243,49 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
       return;
     }
 
+    // Validate required fields
+    if (!editableSchoolData.level) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Level is required',
+        confirmButtonColor: '#2563eb',
+      });
+      return;
+    }
+    if (!editableSchoolData.section_course) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Section/Course is required',
+        confirmButtonColor: '#2563eb',
+      });
+      return;
+    }
+
     try {
       setUpdating(true);
       setConfirmModalOpen(false);
 
-      // Save school information first (updates student_id_info table only)
       const saved = await saveSchoolInformation();
+      if (!saved) return;
 
-      if (!saved) {
-        return;
-      }
-
-      // Approve class details - ONLY updates student_id_info table
       const classDetailsResponse = await put<{ success: boolean; response: string }>(
         `/admin/students/${student.id}`,
-        {
-          class_details_status: 'approved',
-          // No date sent - backend will set it using Carbon::now('Asia/Manila')
-        },
+        { class_details_status: 'approved' },
       );
 
       if (!classDetailsResponse.success) {
         throw new Error(classDetailsResponse.response || 'Failed to approve class details');
       }
 
-      // Refresh the student list if callback provided
       if (onUpdate) {
         await onUpdate();
       }
 
       Swal.fire({
         icon: 'success',
-        title: 'Approved!',
-        html: `
-          <div style="text-align: left;">
-            <p><strong>Student:</strong> ${editableData.name_to_appear_on_id}</p>
-            <p><strong>Student ID:</strong> ${student.student_id || '—'}</p>
-            <p><strong>Level:</strong> ${editableData.level || '—'}</p>
-            <p><strong>Section/Course:</strong> ${editableData.section_course || '—'}</p>
-            <p><strong>LRN:</strong> ${editableData.lrn || '—'}</p>
-            <p><strong>ESC Grantee:</strong> ${editableData.esc_voucher_recipient ? 'Yes' : 'No'}</p>
-            ${editableData.esc_number ? `<p><strong>ESC Number:</strong> ${editableData.esc_number}</p>` : ''}
-            <p><strong>Parent/Guardian:</strong> ${editableData.parent_first_name} ${editableData.parent_surname}</p>
-            <p><strong>Parent Email:</strong> ${editableData.parent_email || '—'}</p>
-          </div>
-        `,
+        title: 'Enrollment Confirmed!',
         confirmButtonColor: '#2563eb',
       }).then(() => {
         if (onClose) onClose();
@@ -390,7 +295,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
       Swal.fire({
         icon: 'error',
         title: 'Error!',
-        text: 'Failed to approve student. Please try again.',
+        text: 'Failed to confirm enrollment. Please try again.',
         confirmButtonColor: '#2563eb',
       });
     } finally {
@@ -400,7 +305,6 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
   };
 
   const openConfirmModal = () => {
-    // Check if already approved
     if (isClassDetailsApproved) {
       Swal.fire({
         icon: 'info',
@@ -411,15 +315,14 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
       return;
     }
 
-    // Check if ID info is approved first
     if (student?.id_info_status?.toLowerCase() !== 'approved') {
       Swal.fire({
         icon: 'error',
-        title: 'Cannot Approve',
+        title: 'Cannot Confirm Enrollment',
         html: `
           <div style="text-align: left;">
             <p><strong>Student ID Information Status:</strong> ${student?.id_info_status || 'Pending'}</p>
-            <p>Student ID information must be approved first before you can approve class details.</p>
+            <p>Student ID information must be approved first before you can confirm enrollment.</p>
             <p>Please ask the student to complete their ID registration first.</p>
           </div>
         `,
@@ -428,105 +331,21 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
       return;
     }
 
-    // Validate required fields
-    if (!editableData.first_name) {
+    // Validate required school fields
+    if (!editableSchoolData.level) {
       Swal.fire({
         icon: 'error',
         title: 'Error',
-        text: 'First Name is required',
+        text: 'Level is required',
         confirmButtonColor: '#2563eb',
       });
       return;
     }
-    if (!editableData.surname) {
+    if (!editableSchoolData.section_course) {
       Swal.fire({
         icon: 'error',
         title: 'Error',
-        text: 'Last Name is required',
-        confirmButtonColor: '#2563eb',
-      });
-      return;
-    }
-    if (!editableData.nick_name) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'Nickname is required',
-        confirmButtonColor: '#2563eb',
-      });
-      return;
-    }
-    if (!editableData.birth_date) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'Date of Birth is required',
-        confirmButtonColor: '#2563eb',
-      });
-      return;
-    }
-    if (!editableData.gender) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'Gender is required',
-        confirmButtonColor: '#2563eb',
-      });
-      return;
-    }
-    if (!editableData.residential_address) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'Residential Address is required',
-        confirmButtonColor: '#2563eb',
-      });
-      return;
-    }
-    if (!editableData.emergency_contact_person) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'Emergency Contact Person is required',
-        confirmButtonColor: '#2563eb',
-      });
-      return;
-    }
-    if (!isValidPhoneNumber(editableData.emergency_contact_number)) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'Emergency Contact Number must be exactly 11 digits',
-        confirmButtonColor: '#2563eb',
-      });
-      return;
-    }
-    if (!editableData.parent_first_name) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'Parent/Guardian First Name is required',
-        confirmButtonColor: '#2563eb',
-      });
-      return;
-    }
-    if (!editableData.parent_surname) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'Parent/Guardian Last Name is required',
-        confirmButtonColor: '#2563eb',
-      });
-      return;
-    }
-    if (
-      editableData.parent_email &&
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editableData.parent_email)
-    ) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'Please enter a valid Parent/Guardian Email Address',
+        text: 'Section/Course is required',
         confirmButtonColor: '#2563eb',
       });
       return;
@@ -557,451 +376,450 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
           mx: 'auto',
         }}
       >
-        <Box component="form">
-          <Grid container spacing={{ xs: 2, sm: 3 }}>
-            <Grid size={{ xs: 12 }}>
-              <Stack
-                direction={{ xs: 'column', sm: 'row' }}
-                justifyContent="space-between"
-                alignItems={{ xs: 'flex-start', sm: 'center' }}
-                spacing={{ xs: 2, sm: 0 }}
-                sx={{ mb: { xs: 2, sm: 3, md: 4 } }}
-              >
-                <Typography
-                  variant="h5"
-                  sx={{
-                    fontWeight: 700,
-                    color: '#0f172a',
-                    letterSpacing: '-0.02em',
-                    fontSize: { xs: '1.25rem', sm: '1.5rem' },
-                  }}
-                >
-                  Student ID Registration
-                </Typography>
-                {isClassDetailsApproved ? (
-                  <Chip
-                    label="Class Details Approved"
-                    color="success"
-                    size="small"
-                    sx={{ fontWeight: 500 }}
-                  />
-                ) : (
-                  <Chip
-                    label="Pending Approval"
-                    color="warning"
-                    size="small"
-                    sx={{ fontWeight: 500 }}
-                  />
-                )}
-              </Stack>
-            </Grid>
-
-            <Grid size={{ xs: 12 }}>
-              <Stack sx={{ alignItems: 'center', gap: 1 }}>
-                <Avatar
-                  src={studentPhotoUrl}
-                  sx={{
-                    width: { xs: 70, sm: 80, md: 90 },
-                    height: { xs: 70, sm: 80, md: 90 },
-                    bgcolor: '#2563eb',
-                    border: '3px solid #f0f4fe',
-                    boxShadow: '0 4px 10px rgba(0,0,0,0.05)',
-                    fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
-                    fontWeight: 600,
-                  }}
-                >
-                  {editableData.first_name?.charAt(0) || editableData.surname?.charAt(0) || 'S'}
-                </Avatar>
-                <Box sx={{ textAlign: 'center' }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                    {editableData.name_to_appear_on_id}
-                  </Typography>
-                  {student?.student_id && (
-                    <Typography
-                      variant="caption"
-                      sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}
-                    >
-                      Student ID: {student.student_id}
-                    </Typography>
-                  )}
-                </Box>
-              </Stack>
-            </Grid>
-
-            <Divider sx={{ my: 0 }} />
-
-            {/* A. Personal Information - ALL EDITABLE (but disabled if approved) */}
-            <Grid size={{ xs: 12 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2563eb', mb: 2 }}>
-                A. Personal Information
-              </Typography>
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                size="medium"
-                label="First Name"
-                value={editableData.first_name}
-                onChange={(e) => handleFieldChange('first_name', e.target.value)}
-                required
-                disabled={isClassDetailsApproved}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                size="medium"
-                label="Middle Initial"
-                value={editableData.middle_initial}
-                onChange={(e) => handleFieldChange('middle_initial', e.target.value)}
-                onBlur={handleMiddleInitialBlur}
-                placeholder="e.g., D, DC, D.C, D. C."
-                helperText="Enter middle initial(s) only. Period will be added automatically."
-                disabled={isClassDetailsApproved}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                size="medium"
-                label="Last Name"
-                value={editableData.surname}
-                onChange={(e) => handleFieldChange('surname', e.target.value)}
-                required
-                disabled={isClassDetailsApproved}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                size="medium"
-                label="Suffix Name"
-                value={editableData.suffix_name}
-                onChange={(e) => handleFieldChange('suffix_name', e.target.value)}
-                placeholder="Jr., Sr., III, etc. (Optional)"
-                disabled={isClassDetailsApproved}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                size="medium"
-                label="Nickname"
-                value={editableData.nick_name}
-                onChange={(e) => handleFieldChange('nick_name', e.target.value)}
-                required
-                disabled={isClassDetailsApproved}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                size="medium"
-                label="Date of Birth"
-                type="date"
-                value={editableData.birth_date}
-                onChange={(e) => handleFieldChange('birth_date', e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                required
-                disabled={isClassDetailsApproved}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <FormControl fullWidth size="medium" required disabled={isClassDetailsApproved}>
-                <InputLabel>Gender</InputLabel>
-                <Select
-                  value={editableData.gender}
-                  label="Gender"
-                  onChange={(e) => handleFieldChange('gender', e.target.value)}
-                >
-                  <MenuItem value="Male">Male</MenuItem>
-                  <MenuItem value="Female">Female</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                size="medium"
-                label="Name to Appear on ID Card"
-                value={editableData.name_to_appear_on_id}
-                onChange={(e) => handleFieldChange('name_to_appear_on_id', e.target.value)}
-                placeholder="Last Name, First Name MI."
-                required
-                helperText="Auto-generated from First Name, Middle Initial, and Last Name. You can still edit if needed."
-                disabled={isClassDetailsApproved}
-              />
-            </Grid>
-
-            <Divider sx={{ my: 2 }} />
-
-            {/* B. Additional Information - ALL EDITABLE (but disabled if approved) */}
-            <Grid size={{ xs: 12 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2563eb', mb: 2 }}>
-                B. Additional Information
-              </Typography>
-            </Grid>
-            <Grid size={{ xs: 12 }}>
-              <TextField
-                fullWidth
-                size="medium"
-                label="Residential Address"
-                value={editableData.residential_address}
-                onChange={(e) => handleFieldChange('residential_address', e.target.value)}
-                multiline
-                rows={2}
-                required
-                disabled={isClassDetailsApproved}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                size="medium"
-                label="Emergency Contact Person"
-                value={editableData.emergency_contact_person}
-                onChange={(e) => handleFieldChange('emergency_contact_person', e.target.value)}
-                required
-                disabled={isClassDetailsApproved}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                size="medium"
-                label="Emergency Contact Number"
-                value={editableData.emergency_contact_number}
-                onChange={(e) => handleFieldChange('emergency_contact_number', e.target.value)}
-                placeholder="11 digits only (e.g., 09123456789)"
-                inputProps={{ inputMode: 'numeric', maxLength: 11 }}
-                required
-                helperText={
-                  editableData.emergency_contact_number &&
-                  !isValidPhoneNumber(editableData.emergency_contact_number)
-                    ? 'Must be exactly 11 digits'
-                    : 'Enter exactly 11 digits (0-9)'
-                }
-                error={
-                  !!editableData.emergency_contact_number &&
-                  !isValidPhoneNumber(editableData.emergency_contact_number)
-                }
-                disabled={isClassDetailsApproved}
-              />
-            </Grid>
-
-            <Divider sx={{ my: 2 }} />
-
-            {/* C. School Information - EDITABLE (disabled if approved) */}
-            <Grid size={{ xs: 12 }}>
-              <Stack
-                direction="row"
-                justifyContent="space-between"
-                alignItems="center"
-                sx={{ mb: 2 }}
-              >
-                <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2563eb' }}>
-                  C. School Information
-                </Typography>
-                {isClassDetailsApproved && (
-                  <Chip
-                    label="Class Details Approved"
-                    color="success"
-                    size="small"
-                    sx={{ fontWeight: 500 }}
-                  />
-                )}
-              </Stack>
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                size="medium"
-                label="Level"
-                value={editableData.level}
-                onChange={(e) => handleFieldChange('level', e.target.value)}
-                placeholder="e.g., Grade 7, Grade 8, Grade 9, Grade 10, Grade 11, Grade 12"
-                disabled={isClassDetailsApproved}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                size="medium"
-                label="Section/Course"
-                value={editableData.section_course}
-                onChange={(e) => handleFieldChange('section_course', e.target.value)}
-                placeholder="e.g., Section A, STEM, ABM, HUMSS"
-                disabled={isClassDetailsApproved}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                size="medium"
-                label="LRN (Learner Reference Number)"
-                value={editableData.lrn}
-                onChange={(e) => handleFieldChange('lrn', e.target.value)}
-                placeholder="Enter LRN if available"
-                disabled={isClassDetailsApproved}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <FormControl fullWidth size="medium" disabled={isClassDetailsApproved}>
-                <InputLabel>DepEd ESC Grantee</InputLabel>
-                <Select
-                  value={editableData.esc_voucher_recipient ? 'Yes' : 'No'}
-                  label="DepEd ESC Grantee"
-                  onChange={(e) =>
-                    handleFieldChange('esc_voucher_recipient', e.target.value === 'Yes')
-                  }
-                >
-                  <MenuItem value="Yes">Yes</MenuItem>
-                  <MenuItem value="No">No</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            {editableData.esc_voucher_recipient && (
-              <Grid size={{ xs: 12, md: 6 }}>
-                <TextField
-                  fullWidth
-                  size="medium"
-                  label="ESC Number"
-                  value={editableData.esc_number}
-                  onChange={(e) => handleFieldChange('esc_number', e.target.value)}
-                  placeholder="Enter ESC number"
-                  disabled={isClassDetailsApproved}
-                />
-              </Grid>
-            )}
-
-            {/* Class Details Status Display */}
-            <Grid size={{ xs: 12, md: 6 }}>
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <Typography variant="body2" sx={{ color: '#64748b' }}>
-                  Class Details Status:
-                </Typography>
-                <Chip
-                  label={student?.class_details_status || 'Pending'}
-                  color={isClassDetailsApproved ? 'success' : 'warning'}
-                  size="small"
-                  sx={{ fontWeight: 500 }}
-                />
-                {student?.class_details_approval_date && (
-                  <Typography variant="caption" sx={{ color: '#64748b' }}>
-                    Approved: {new Date(student.class_details_approval_date).toLocaleDateString()}
-                  </Typography>
-                )}
-              </Stack>
-            </Grid>
-
-            <Divider sx={{ my: 2 }} />
-
-            {/* D. Parent/Guardian Information - ALL EDITABLE (disabled if approved) */}
-            <Grid size={{ xs: 12 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2563eb', mb: 2 }}>
-                D. Parent/Guardian Information
-              </Typography>
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                size="medium"
-                label="Parent/Guardian First Name"
-                value={editableData.parent_first_name}
-                onChange={(e) => handleFieldChange('parent_first_name', e.target.value)}
-                required
-                disabled={isClassDetailsApproved}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                size="medium"
-                label="Parent/Guardian Last Name"
-                value={editableData.parent_surname}
-                onChange={(e) => handleFieldChange('parent_surname', e.target.value)}
-                required
-                disabled={isClassDetailsApproved}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                size="medium"
-                label="Parent/Guardian Email Address"
-                type="email"
-                value={editableData.parent_email}
-                onChange={(e) => handleFieldChange('parent_email', e.target.value)}
-                placeholder="optional@example.com"
-                disabled={isClassDetailsApproved}
-              />
-            </Grid>
-
-            {/* Submit Button - Hidden if already approved */}
-            {!isClassDetailsApproved && (
-              <Grid size={{ xs: 12 }}>
-                <Stack
-                  direction={{ xs: 'column', sm: 'row' }}
-                  spacing={2}
-                  justifyContent="flex-end"
-                  sx={{ mt: { xs: 3, sm: 5 } }}
-                >
-                  <Button
-                    variant="contained"
-                    onClick={openConfirmModal}
-                    startIcon={<IconifyIcon icon="mdi:check-circle" />}
-                    disabled={updating}
-                    sx={{
-                      bgcolor: updating ? '#94a3b8' : '#22c55e',
-                      '&:hover': { bgcolor: updating ? '#94a3b8' : '#16a34a' },
-                      textTransform: 'none',
-                      fontWeight: 600,
-                    }}
-                  >
-                    {updating ? 'Approving...' : 'Approve Student'}
-                  </Button>
-                  {onClose && (
-                    <Button
-                      variant="outlined"
-                      onClick={onClose}
-                      disabled={updating}
-                      sx={{ textTransform: 'none', fontWeight: 600 }}
-                    >
-                      Back
-                    </Button>
-                  )}
-                </Stack>
-              </Grid>
-            )}
-
-            {/* Show message if already approved */}
-            {isClassDetailsApproved && (
-              <Grid size={{ xs: 12 }}>
-                <Stack direction="row" justifyContent="flex-end" sx={{ mt: { xs: 3, sm: 5 } }}>
-                  <Button
-                    variant="outlined"
-                    onClick={onClose}
-                    sx={{ textTransform: 'none', fontWeight: 600 }}
-                  >
-                    Back
-                  </Button>
-                </Stack>
-              </Grid>
-            )}
-          </Grid>
+        {/* Header with Avatar */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+          <Avatar
+            src={studentPhotoUrl}
+            sx={{
+              width: { xs: 64, sm: 80 },
+              height: { xs: 64, sm: 80 },
+              bgcolor: '#2563eb',
+              fontSize: { xs: '1.5rem', sm: '2rem' },
+              fontWeight: 600,
+            }}
+          >
+            {studentData.name_to_appear_on_id?.charAt(0) || 'S'}
+          </Avatar>
+          <Box>
+            <Typography
+              variant="h5"
+              sx={{ fontWeight: 600, fontSize: { xs: '1.25rem', sm: '1.5rem' } }}
+            >
+              {preserveOriginalCase(studentData.name_to_appear_on_id)}
+            </Typography>
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+              Student ID: {student.student_id}
+            </Typography>
+          </Box>
         </Box>
+
+        {/* ========================================================= */}
+        {/* SECTION 1: A. School Information (EDITABLE) */}
+        {/* ========================================================= */}
+        <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2563eb', mb: 2 }}>
+          A. School Information
+        </Typography>
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <TextField
+              fullWidth
+              size="small"
+              label="Level *"
+              value={editableSchoolData.level}
+              onChange={(e) => handleSchoolFieldChange('level', e.target.value)}
+              placeholder="e.g., Grade 7, Grade 8, Grade 9, Grade 10, Grade 11, Grade 12"
+              disabled={isClassDetailsApproved}
+              required
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <TextField
+              fullWidth
+              size="small"
+              label="Section/Course *"
+              value={editableSchoolData.section_course}
+              onChange={(e) => handleSchoolFieldChange('section_course', e.target.value)}
+              placeholder="e.g., Section A, STEM, ABM, HUMSS"
+              disabled={isClassDetailsApproved}
+              required
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <FormControl fullWidth size="small" required disabled={isClassDetailsApproved}>
+              <InputLabel>DepEd ESC Grantee *</InputLabel>
+              <Select
+                value={editableSchoolData.esc_voucher_recipient ? 'Yes' : 'No'}
+                label="DepEd ESC Grantee *"
+                onChange={(e) =>
+                  handleSchoolFieldChange('esc_voucher_recipient', e.target.value === 'Yes')
+                }
+              >
+                <MenuItem value="Yes">Yes</MenuItem>
+                <MenuItem value="No">No</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+          {editableSchoolData.esc_voucher_recipient && (
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                size="small"
+                label="ESC Number (Optional)"
+                value={editableSchoolData.esc_number}
+                onChange={(e) => handleSchoolFieldChange('esc_number', e.target.value)}
+                placeholder="Enter ESC number if available"
+                disabled={isClassDetailsApproved}
+              />
+            </Grid>
+          )}
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <TextField
+              fullWidth
+              size="small"
+              label="LRN (Optional)"
+              value={editableSchoolData.lrn}
+              onChange={(e) => handleSchoolFieldChange('lrn', e.target.value)}
+              placeholder="Enter LRN if available"
+              disabled={isClassDetailsApproved}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Stack direction="row" alignItems="center" spacing={2}>
+              <Typography variant="body2" sx={{ color: '#64748b' }}>
+                Class Details Status:
+              </Typography>
+              <Chip
+                label={student.class_details_status || 'Pending'}
+                color={isClassDetailsApproved ? 'success' : 'warning'}
+                size="small"
+                sx={{ fontWeight: 500 }}
+              />
+              {student.class_details_approval_date && (
+                <Typography variant="caption" sx={{ color: '#64748b' }}>
+                  Approved: {new Date(student.class_details_approval_date).toLocaleDateString()}
+                </Typography>
+              )}
+            </Stack>
+          </Grid>
+        </Grid>
+
+        {/* Confirm Enrollment Button - Placed under School Information */}
+        {!isClassDetailsApproved && (
+          <Stack direction="row" justifyContent="flex-end" sx={{ mb: 3 }}>
+            <Button
+              variant="contained"
+              onClick={openConfirmModal}
+              startIcon={<IconifyIcon icon="mdi:check-circle" />}
+              disabled={updating}
+              sx={{
+                bgcolor: updating ? '#94a3b8' : '#22c55e',
+                '&:hover': { bgcolor: updating ? '#94a3b8' : '#16a34a' },
+                textTransform: 'none',
+                fontWeight: 600,
+                px: 3,
+              }}
+            >
+              {updating ? 'Confirming...' : 'Confirm Enrollment'}
+            </Button>
+          </Stack>
+        )}
+
+        <Divider sx={{ my: 2 }} />
+
+        {/* ========================================================= */}
+        {/* SECTION 2: B. Personal Information (READ-ONLY) */}
+        {/* ========================================================= */}
+        <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2563eb', mb: 2 }}>
+          B. Personal Information
+        </Typography>
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Typography
+              variant="caption"
+              sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+            >
+              First Name
+            </Typography>
+            <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+              {formatName(studentData.first_name)}
+            </Typography>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Typography
+              variant="caption"
+              sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+            >
+              Middle Initial
+            </Typography>
+            <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+              {studentData.middle_initial || '—'}
+            </Typography>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Typography
+              variant="caption"
+              sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+            >
+              Last Name
+            </Typography>
+            <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+              {formatName(studentData.surname)}
+            </Typography>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Typography
+              variant="caption"
+              sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+            >
+              Suffix Name
+            </Typography>
+            <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+              {formatName(studentData.suffix_name)}
+            </Typography>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Typography
+              variant="caption"
+              sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+            >
+              Nickname
+            </Typography>
+            <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+              {formatName(studentData.nick_name)}
+            </Typography>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Typography
+              variant="caption"
+              sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+            >
+              Date of Birth
+            </Typography>
+            <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+              {studentData.birth_date
+                ? new Date(studentData.birth_date).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })
+                : '—'}
+            </Typography>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Typography
+              variant="caption"
+              sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+            >
+              Gender
+            </Typography>
+            <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+              {studentData.gender ? capitalizeFirstLetter(studentData.gender) : '—'}
+            </Typography>
+          </Grid>
+        </Grid>
+
+        <Divider sx={{ my: 2 }} />
+
+        {/* ========================================================= */}
+        {/* SECTION 3: C. Additional Information (READ-ONLY) */}
+        {/* Following DashboardContent.tsx modal structure */}
+        {/* ========================================================= */}
+        <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2563eb', mb: 2 }}>
+          C. Additional Information
+        </Typography>
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          {/* Name to Appear on ID Card */}
+          <Grid size={{ xs: 12 }}>
+            <Typography
+              variant="caption"
+              sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+            >
+              Name to Appear on ID Card
+            </Typography>
+            <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+              {preserveOriginalCase(studentData.name_to_appear_on_id)}
+            </Typography>
+          </Grid>
+
+          {/* ID Info Status and Approval Date */}
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Typography
+              variant="caption"
+              sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+            >
+              ID Info Status
+            </Typography>
+            <Chip
+              label={student?.id_info_status || 'Pending'}
+              color={student?.id_info_status?.toLowerCase() === 'approved' ? 'success' : 'warning'}
+              size="small"
+              sx={{ fontWeight: 500, mt: 0.5 }}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Typography
+              variant="caption"
+              sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+            >
+              ID Info Approval Date
+            </Typography>
+            <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+              {student?.id_info_approval_date
+                ? new Date(student.id_info_approval_date).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })
+                : '—'}
+            </Typography>
+          </Grid>
+
+          {/* Class Details Status and Approval Date */}
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Typography
+              variant="caption"
+              sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+            >
+              Class Details Status
+            </Typography>
+            <Chip
+              label={student?.class_details_status || 'Pending'}
+              color={isClassDetailsApproved ? 'success' : 'warning'}
+              size="small"
+              sx={{ fontWeight: 500, mt: 0.5 }}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Typography
+              variant="caption"
+              sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+            >
+              Class Details Approval Date
+            </Typography>
+            <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+              {student?.class_details_approval_date
+                ? new Date(student.class_details_approval_date).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })
+                : '—'}
+            </Typography>
+          </Grid>
+
+          {/* ID Print Status and Print Date */}
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Typography
+              variant="caption"
+              sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+            >
+              ID Print Status
+            </Typography>
+            <Chip
+              label={student?.id_print_status || 'Pending'}
+              color={student?.id_print_status?.toLowerCase() === 'printed' ? 'success' : 'warning'}
+              size="small"
+              sx={{ fontWeight: 500, mt: 0.5 }}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Typography
+              variant="caption"
+              sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+            >
+              ID Print Date
+            </Typography>
+            <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+              {student?.id_print_date
+                ? new Date(student.id_print_date).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })
+                : '—'}
+            </Typography>
+          </Grid>
+
+          {/* Residential Address */}
+          <Grid size={{ xs: 12 }}>
+            <Typography
+              variant="caption"
+              sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+            >
+              Residential Address
+            </Typography>
+            <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+              {preserveOriginalCase(studentData.residential_address) || 'Not provided'}
+            </Typography>
+          </Grid>
+
+          {/* Emergency Contact Person and Number (combined like Dashboard) */}
+          <Grid size={{ xs: 12 }}>
+            <Typography
+              variant="caption"
+              sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+            >
+              Emergency Contact Person and Number
+            </Typography>
+            <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+              {studentData.emergency_contact_person && studentData.emergency_contact_number
+                ? `${studentData.emergency_contact_person} - ${studentData.emergency_contact_number}`
+                : studentData.emergency_contact_person ||
+                  studentData.emergency_contact_number ||
+                  'Not provided'}
+            </Typography>
+          </Grid>
+        </Grid>
+
+        <Divider sx={{ my: 2 }} />
+
+        {/* ========================================================= */}
+        {/* SECTION 4: D. Parent/Guardian Information (READ-ONLY) */}
+        {/* ========================================================= */}
+        <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2563eb', mb: 2 }}>
+          D. Parent/Guardian Information
+        </Typography>
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Typography
+              variant="caption"
+              sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+            >
+              Parent/Guardian Name
+            </Typography>
+            <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+              {studentData.parent_first_name || studentData.parent_surname
+                ? `${formatName(studentData.parent_first_name)} ${formatName(studentData.parent_surname)}`.trim()
+                : 'Not provided'}
+            </Typography>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Typography
+              variant="caption"
+              sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+            >
+              Parent/Guardian Email
+            </Typography>
+            <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+              {studentData.parent_email || 'Not provided'}
+            </Typography>
+          </Grid>
+        </Grid>
+
+        {/* Back button only (when already approved) */}
+        {isClassDetailsApproved && (
+          <Stack direction="row" justifyContent="flex-end" sx={{ mt: 2 }}>
+            <Button
+              variant="outlined"
+              onClick={onClose}
+              sx={{ textTransform: 'none', fontWeight: 600 }}
+            >
+              Back
+            </Button>
+          </Stack>
+        )}
       </Paper>
 
       {/* Confirmation Modal */}
       <Dialog
         open={confirmModalOpen}
         onClose={handleCloseModal}
-        title="Confirm Student Approval"
+        title="Confirm Enrollment"
         maxWidth={600}
         disableBackdropClick={true}
         disableEscapeKeyDown={true}
         showLoading={updating}
-        loadingTitle="Approving..."
+        loadingTitle="Confirming..."
         actions={[
           {
             label: 'Cancel',
@@ -1011,8 +829,8 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
             disabled: updating,
           },
           {
-            label: 'Approve Student',
-            onClick: handleConfirmApprove,
+            label: 'Confirm Enrollment',
+            onClick: handleConfirmEnrollment,
             color: 'success',
             variant: 'contained',
             disabled: !isCheckboxChecked || updating,
@@ -1022,157 +840,137 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
         content={
           <Stack spacing={3} direction="column" sx={{ mt: 1, maxHeight: '70vh', pr: 1 }}>
             <Typography variant="body2" sx={{ color: '#64748b' }}>
-              Please review the student information below before approving.
+              Please review the student information below before confirming enrollment.
             </Typography>
 
-            {/* A. Personal Information */}
+            {/* A. School Information */}
             <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#2563eb' }}>
-              A. Personal Information
-            </Typography>
-            <Grid container spacing={2}>
-              <Grid size={{ xs: 6 }}>
-                <Typography variant="caption" sx={{ fontWeight: 500 }}>
-                  First Name
-                </Typography>
-                <Typography variant="body2">{editableData.first_name || '—'}</Typography>
-              </Grid>
-              <Grid size={{ xs: 6 }}>
-                <Typography variant="caption" sx={{ fontWeight: 500 }}>
-                  Middle Initial
-                </Typography>
-                <Typography variant="body2">{editableData.middle_initial || '—'}</Typography>
-              </Grid>
-              <Grid size={{ xs: 6 }}>
-                <Typography variant="caption" sx={{ fontWeight: 500 }}>
-                  Last Name
-                </Typography>
-                <Typography variant="body2">{editableData.surname || '—'}</Typography>
-              </Grid>
-              <Grid size={{ xs: 6 }}>
-                <Typography variant="caption" sx={{ fontWeight: 500 }}>
-                  Suffix Name
-                </Typography>
-                <Typography variant="body2">{editableData.suffix_name || '—'}</Typography>
-              </Grid>
-              <Grid size={{ xs: 6 }}>
-                <Typography variant="caption" sx={{ fontWeight: 500 }}>
-                  Nickname
-                </Typography>
-                <Typography variant="body2">{editableData.nick_name || '—'}</Typography>
-              </Grid>
-              <Grid size={{ xs: 6 }}>
-                <Typography variant="caption" sx={{ fontWeight: 500 }}>
-                  Date of Birth
-                </Typography>
-                <Typography variant="body2">{editableData.birth_date || '—'}</Typography>
-              </Grid>
-              <Grid size={{ xs: 6 }}>
-                <Typography variant="caption" sx={{ fontWeight: 500 }}>
-                  Gender
-                </Typography>
-                <Typography variant="body2">{editableData.gender || '—'}</Typography>
-              </Grid>
-              <Grid size={{ xs: 6 }}>
-                <Typography variant="caption" sx={{ fontWeight: 500 }}>
-                  Name to Appear on ID Card
-                </Typography>
-                <Typography variant="body2">{editableData.name_to_appear_on_id || '—'}</Typography>
-              </Grid>
-            </Grid>
-
-            {/* B. Additional Information */}
-            <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#2563eb' }}>
-              B. Additional Information
-            </Typography>
-            <Grid container spacing={2}>
-              <Grid size={{ xs: 12 }}>
-                <Typography variant="caption" sx={{ fontWeight: 500 }}>
-                  Residential Address
-                </Typography>
-                <Typography variant="body2">{editableData.residential_address || '—'}</Typography>
-              </Grid>
-              <Grid size={{ xs: 6 }}>
-                <Typography variant="caption" sx={{ fontWeight: 500 }}>
-                  Emergency Contact Person
-                </Typography>
-                <Typography variant="body2">
-                  {editableData.emergency_contact_person || '—'}
-                </Typography>
-              </Grid>
-              <Grid size={{ xs: 6 }}>
-                <Typography variant="caption" sx={{ fontWeight: 500 }}>
-                  Emergency Contact Number
-                </Typography>
-                <Typography variant="body2">
-                  {editableData.emergency_contact_number || '—'}
-                </Typography>
-              </Grid>
-            </Grid>
-
-            {/* C. Parent/Guardian Information */}
-            <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#2563eb' }}>
-              C. Parent/Guardian Information
-            </Typography>
-            <Grid container spacing={2}>
-              <Grid size={{ xs: 6 }}>
-                <Typography variant="caption" sx={{ fontWeight: 500 }}>
-                  Parent/Guardian First Name
-                </Typography>
-                <Typography variant="body2">{editableData.parent_first_name || '—'}</Typography>
-              </Grid>
-              <Grid size={{ xs: 6 }}>
-                <Typography variant="caption" sx={{ fontWeight: 500 }}>
-                  Parent/Guardian Last Name
-                </Typography>
-                <Typography variant="body2">{editableData.parent_surname || '—'}</Typography>
-              </Grid>
-              <Grid size={{ xs: 12 }}>
-                <Typography variant="caption" sx={{ fontWeight: 500 }}>
-                  Parent/Guardian Email
-                </Typography>
-                <Typography variant="body2">{editableData.parent_email || '—'}</Typography>
-              </Grid>
-            </Grid>
-
-            {/* D. School Information */}
-            <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#2563eb' }}>
-              D. School Information
+              A. School Information
             </Typography>
             <Grid container spacing={2}>
               <Grid size={{ xs: 6 }}>
                 <Typography variant="caption" sx={{ fontWeight: 500 }}>
                   Level
                 </Typography>
-                <Typography variant="body2">{editableData.level || '—'}</Typography>
+                <Typography variant="body2">{editableSchoolData.level || '—'}</Typography>
               </Grid>
               <Grid size={{ xs: 6 }}>
                 <Typography variant="caption" sx={{ fontWeight: 500 }}>
                   Section/Course
                 </Typography>
-                <Typography variant="body2">{editableData.section_course || '—'}</Typography>
+                <Typography variant="body2">{editableSchoolData.section_course || '—'}</Typography>
               </Grid>
               <Grid size={{ xs: 6 }}>
                 <Typography variant="caption" sx={{ fontWeight: 500 }}>
                   LRN
                 </Typography>
-                <Typography variant="body2">{editableData.lrn || '—'}</Typography>
+                <Typography variant="body2">{editableSchoolData.lrn || '—'}</Typography>
               </Grid>
               <Grid size={{ xs: 6 }}>
                 <Typography variant="caption" sx={{ fontWeight: 500 }}>
                   ESC Voucher Recipient
                 </Typography>
                 <Typography variant="body2">
-                  {editableData.esc_voucher_recipient ? 'Yes' : 'No'}
+                  {editableSchoolData.esc_voucher_recipient ? 'Yes' : 'No'}
                 </Typography>
               </Grid>
-              {editableData.esc_voucher_recipient && editableData.esc_number && (
+              {editableSchoolData.esc_voucher_recipient && editableSchoolData.esc_number && (
                 <Grid size={{ xs: 6 }}>
                   <Typography variant="caption" sx={{ fontWeight: 500 }}>
                     ESC Number
                   </Typography>
-                  <Typography variant="body2">{editableData.esc_number || '—'}</Typography>
+                  <Typography variant="body2">{editableSchoolData.esc_number || '—'}</Typography>
                 </Grid>
               )}
+            </Grid>
+
+            {/* B. Personal Information */}
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#2563eb' }}>
+              B. Personal Information
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" sx={{ fontWeight: 500 }}>
+                  First Name
+                </Typography>
+                <Typography variant="body2">{studentData.first_name || '—'}</Typography>
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" sx={{ fontWeight: 500 }}>
+                  Middle Initial
+                </Typography>
+                <Typography variant="body2">{studentData.middle_initial || '—'}</Typography>
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" sx={{ fontWeight: 500 }}>
+                  Last Name
+                </Typography>
+                <Typography variant="body2">{studentData.surname || '—'}</Typography>
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" sx={{ fontWeight: 500 }}>
+                  Suffix Name
+                </Typography>
+                <Typography variant="body2">{studentData.suffix_name || '—'}</Typography>
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" sx={{ fontWeight: 500 }}>
+                  Nickname
+                </Typography>
+                <Typography variant="body2">{studentData.nick_name || '—'}</Typography>
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" sx={{ fontWeight: 500 }}>
+                  Date of Birth
+                </Typography>
+                <Typography variant="body2">{studentData.birth_date || '—'}</Typography>
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" sx={{ fontWeight: 500 }}>
+                  Gender
+                </Typography>
+                <Typography variant="body2">{studentData.gender || '—'}</Typography>
+              </Grid>
+            </Grid>
+
+            {/* C. Additional Information */}
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#2563eb' }}>
+              C. Additional Information
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12 }}>
+                <Typography variant="caption" sx={{ fontWeight: 500 }}>
+                  Name to Appear on ID Card
+                </Typography>
+                <Typography variant="body2">{studentData.name_to_appear_on_id || '—'}</Typography>
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" sx={{ fontWeight: 500 }}>
+                  ID Info Status
+                </Typography>
+                <Chip
+                  label={student?.id_info_status || 'Pending'}
+                  color={
+                    student?.id_info_status?.toLowerCase() === 'approved' ? 'success' : 'warning'
+                  }
+                  size="small"
+                  sx={{ fontWeight: 500, mt: 0.5 }}
+                />
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" sx={{ fontWeight: 500 }}>
+                  ID Info Approval Date
+                </Typography>
+                <Typography variant="body2">
+                  {student?.id_info_approval_date
+                    ? new Date(student.id_info_approval_date).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })
+                    : '—'}
+                </Typography>
+              </Grid>
               <Grid size={{ xs: 6 }}>
                 <Typography variant="caption" sx={{ fontWeight: 500 }}>
                   Class Details Status
@@ -1184,16 +982,88 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
                   sx={{ fontWeight: 500, mt: 0.5 }}
                 />
               </Grid>
-              {student?.class_details_approval_date && (
-                <Grid size={{ xs: 6 }}>
-                  <Typography variant="caption" sx={{ fontWeight: 500 }}>
-                    Class Details Approval Date
-                  </Typography>
-                  <Typography variant="body2">
-                    {new Date(student.class_details_approval_date).toLocaleDateString()}
-                  </Typography>
-                </Grid>
-              )}
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" sx={{ fontWeight: 500 }}>
+                  Class Details Approval Date
+                </Typography>
+                <Typography variant="body2">
+                  {student?.class_details_approval_date
+                    ? new Date(student.class_details_approval_date).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })
+                    : '—'}
+                </Typography>
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" sx={{ fontWeight: 500 }}>
+                  ID Print Status
+                </Typography>
+                <Chip
+                  label={student?.id_print_status || 'Pending'}
+                  color={
+                    student?.id_print_status?.toLowerCase() === 'printed' ? 'success' : 'warning'
+                  }
+                  size="small"
+                  sx={{ fontWeight: 500, mt: 0.5 }}
+                />
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" sx={{ fontWeight: 500 }}>
+                  ID Print Date
+                </Typography>
+                <Typography variant="body2">
+                  {student?.id_print_date
+                    ? new Date(student.id_print_date).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })
+                    : '—'}
+                </Typography>
+              </Grid>
+              <Grid size={{ xs: 12 }}>
+                <Typography variant="caption" sx={{ fontWeight: 500 }}>
+                  Residential Address
+                </Typography>
+                <Typography variant="body2">{studentData.residential_address || '—'}</Typography>
+              </Grid>
+              <Grid size={{ xs: 12 }}>
+                <Typography variant="caption" sx={{ fontWeight: 500 }}>
+                  Emergency Contact Person and Number
+                </Typography>
+                <Typography variant="body2">
+                  {studentData.emergency_contact_person && studentData.emergency_contact_number
+                    ? `${studentData.emergency_contact_person} - ${studentData.emergency_contact_number}`
+                    : studentData.emergency_contact_person ||
+                      studentData.emergency_contact_number ||
+                      '—'}
+                </Typography>
+              </Grid>
+            </Grid>
+
+            {/* D. Parent/Guardian Information */}
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#2563eb' }}>
+              D. Parent/Guardian Information
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" sx={{ fontWeight: 500 }}>
+                  Parent/Guardian Name
+                </Typography>
+                <Typography variant="body2">
+                  {studentData.parent_first_name || studentData.parent_surname
+                    ? `${formatName(studentData.parent_first_name)} ${formatName(studentData.parent_surname)}`.trim()
+                    : '—'}
+                </Typography>
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" sx={{ fontWeight: 500 }}>
+                  Parent/Guardian Email
+                </Typography>
+                <Typography variant="body2">{studentData.parent_email || '—'}</Typography>
+              </Grid>
             </Grid>
 
             <FormControlLabel
@@ -1211,8 +1081,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
         }
       />
 
-      {/* OnLoader component - shows loading overlay during save */}
-      <OnLoader open={updating} title="Approving..." size={40} thickness={4} />
+      <OnLoader open={updating} title="Confirming Enrollment..." size={40} thickness={4} />
     </Box>
   );
 };

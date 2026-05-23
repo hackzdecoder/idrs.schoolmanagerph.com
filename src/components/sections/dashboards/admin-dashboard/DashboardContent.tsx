@@ -102,7 +102,6 @@ interface StudentRecord {
 }
 
 interface FilterCriteria {
-  school_code: string;
   student_id: string;
   student_type: string;
   level: string;
@@ -120,24 +119,25 @@ interface FilterCriteria {
 }
 
 interface Statistics {
-  total: number;
-  approvedIdInfo: number;
-  pendingIdInfo: number;
-  approvedClassDetails: number;
-  pendingClassDetails: number;
-  printedIds: number;
-  totalPendingIds: number;
-  totalReprintedIds: number;
+  total_students: number;
+  approved_id_info_count: number;
+  pending_id_info_count: number;
+  approved_class_details_count: number;
+  pending_class_details_count: number;
+  printed_ids_count: number;
+  total_pending_ids_count: number;
+  total_reprinted_ids_count: number;
 }
 
-const capitalizeFirstLetter = (str: string): string => {
-  if (!str) return '';
-  return str.charAt(0).toUpperCase() + str.slice(1);
+// Text formatting utilities
+const capitalizeFirstLetter = (text: string): string => {
+  if (!text) return '';
+  return text.charAt(0).toUpperCase() + text.slice(1);
 };
 
-const capitalizeWords = (str: string): string => {
-  if (!str) return '';
-  return str
+const capitalizeWords = (text: string): string => {
+  if (!text) return '';
+  return text
     .split(' ')
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(' ');
@@ -153,33 +153,33 @@ const formatMiddleInitial = (initial: string | null | undefined): string => {
   return initial.toUpperCase();
 };
 
-const preserveCase = (text: string | null | undefined): string => {
+const preserveOriginalCase = (text: string | null | undefined): string => {
   if (!text) return '—';
   return text;
 };
 
-const formatStatus = (status: string | undefined | null): string => {
+const formatStatusLabel = (status: string | undefined | null): string => {
   if (!status) return '—';
   if (status.toLowerCase() === 'yes') return 'Yes';
   if (status.toLowerCase() === 'no') return 'No';
   return capitalizeFirstLetter(status);
 };
 
-const formatStudentType = (type: string | undefined | null): string => {
+const formatStudentTypeLabel = (type: string | undefined | null): string => {
   if (!type) return 'Not specified';
   if (type.toLowerCase() === 'new') return 'New Student';
   if (type.toLowerCase() === 'old') return 'Old Student';
   return capitalizeFirstLetter(type);
 };
 
-const getStudentTypeColor = (type: string | undefined | null): string => {
+const getStudentTypeBadgeColor = (type: string | undefined | null): string => {
   if (!type) return 'default';
   if (type.toLowerCase() === 'new') return 'info';
   if (type.toLowerCase() === 'old') return 'secondary';
   return 'default';
 };
 
-const getStatusColor = (status: string) => {
+const getStatusBadgeColor = (status: string) => {
   switch (status?.toLowerCase()) {
     case 'approved':
       return 'success';
@@ -209,34 +209,31 @@ const getStatusColor = (status: string) => {
 
 // Helper function to get student photo URL
 // Pattern: /idrs-school-ids/{school_code}/{student_id}_{surname}.jpg
-// Example: /idrs-school-ids/atheneum/26010000014_Clark.jpg
 const getStudentPhotoUrl = (schoolCode: string, studentId: string, surname: string): string => {
   if (!schoolCode || !studentId || !surname) return '';
-  // Use absolute URL with your production domain
   return `https://schoolmanagerph.com/idrs-school-ids/${schoolCode}/${studentId}_${surname}.jpg`;
 };
 
 const DashboardContent = () => {
   const { get } = useRouteApiSetup();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isMobileDevice = useMediaQuery(theme.breakpoints.down('sm'));
 
+  // State declarations
   const [students, setStudents] = useState<StudentRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedStudent, setSelectedStudent] = useState<StudentRecord | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [filterModalOpen, setFilterModalOpen] = useState(false);
-  const [filterLoading, setFilterLoading] = useState(false);
-  const [searchText, setSearchText] = useState('');
-  const fetchedRef = useRef(false);
-  const getRef = useRef(get);
-
-  const [schoolCodeOptions, setSchoolCodeOptions] = useState<string[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [isFilterLoading, setIsFilterLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [levelOptions, setLevelOptions] = useState<string[]>([]);
   const [sectionOptions, setSectionOptions] = useState<string[]>([]);
 
+  const hasFetched = useRef(false);
+  const getApi = useRef(get);
+
   const [filterCriteria, setFilterCriteria] = useState<FilterCriteria>({
-    school_code: '',
     student_id: '',
     student_type: '',
     level: '',
@@ -253,47 +250,49 @@ const DashboardContent = () => {
     enrollment_date_to: '',
   });
 
+  // Statistics calculations
   const statistics: Statistics = useMemo(() => {
-    const total = students.length;
-    const approvedIdInfo = students.filter(
-      (s) => s.id_info_status?.toLowerCase() === 'approved',
+    const totalStudents = students.length;
+    const approvedIdInfoCount = students.filter(
+      (student) => student.id_info_status?.toLowerCase() === 'approved',
     ).length;
-    const pendingIdInfo = students.filter(
-      (s) => s.id_info_status?.toLowerCase() === 'pending',
+    const pendingIdInfoCount = students.filter(
+      (student) => student.id_info_status?.toLowerCase() === 'pending',
     ).length;
-    const approvedClassDetails = students.filter(
-      (s) => s.class_details_status?.toLowerCase() === 'approved',
+    const approvedClassDetailsCount = students.filter(
+      (student) => student.class_details_status?.toLowerCase() === 'approved',
     ).length;
-    const pendingClassDetails = students.filter(
-      (s) => s.class_details_status?.toLowerCase() === 'pending',
+    const pendingClassDetailsCount = students.filter(
+      (student) => student.class_details_status?.toLowerCase() === 'pending',
     ).length;
-    const printedIds = students.filter(
-      (s) => s.id_print_status?.toLowerCase() === 'printed',
+    const printedIdsCount = students.filter(
+      (student) => student.id_print_status?.toLowerCase() === 'printed',
     ).length;
-    const totalPendingIds = students.filter(
-      (s) =>
-        s.id_print_status?.toLowerCase() === 'pending' ||
-        s.id_print_status?.toLowerCase() === 'pending_print',
+    const totalPendingIdsCount = students.filter(
+      (student) =>
+        student.id_print_status?.toLowerCase() === 'pending' ||
+        student.id_print_status?.toLowerCase() === 'pending_print',
     ).length;
-    const totalReprintedIds = students.reduce((sum, student) => {
+    const totalReprintedIdsCount = students.reduce((sum, student) => {
       return sum + (student.id_reprint_count || 0);
     }, 0);
 
     return {
-      total,
-      approvedIdInfo,
-      pendingIdInfo,
-      approvedClassDetails,
-      pendingClassDetails,
-      printedIds,
-      totalPendingIds,
-      totalReprintedIds,
+      total_students: totalStudents,
+      approved_id_info_count: approvedIdInfoCount,
+      pending_id_info_count: pendingIdInfoCount,
+      approved_class_details_count: approvedClassDetailsCount,
+      pending_class_details_count: pendingClassDetailsCount,
+      printed_ids_count: printedIdsCount,
+      total_pending_ids_count: totalPendingIdsCount,
+      total_reprinted_ids_count: totalReprintedIdsCount,
     };
   }, [students]);
 
+  // Filter students by search query
   const filteredStudents = useMemo(() => {
-    if (!searchText.trim()) return students;
-    const searchLower = searchText.toLowerCase();
+    if (!searchQuery.trim()) return students;
+    const searchLower = searchQuery.toLowerCase();
     return students.filter((student) => {
       return (
         student.student_id?.toLowerCase().includes(searchLower) ||
@@ -304,25 +303,23 @@ const DashboardContent = () => {
         student.id_info_status?.toLowerCase().includes(searchLower)
       );
     });
-  }, [students, searchText]);
+  }, [students, searchQuery]);
 
+  // Extract unique filter options from students data
   const extractFilterOptions = (studentRecords: StudentRecord[]) => {
-    const schoolCodes = [
-      ...new Set(studentRecords.map((s) => s.school_code).filter(Boolean)),
-    ].sort();
-    const levels = [...new Set(studentRecords.map((s) => s.level).filter(Boolean))].sort();
-    const sections = [
+    const uniqueLevels = [...new Set(studentRecords.map((s) => s.level).filter(Boolean))].sort();
+    const uniqueSections = [
       ...new Set(studentRecords.map((s) => s.section_course).filter(Boolean)),
     ].sort();
-    setSchoolCodeOptions(schoolCodes);
-    setLevelOptions(levels);
-    setSectionOptions(sections);
+    setLevelOptions(uniqueLevels);
+    setSectionOptions(uniqueSections);
   };
 
+  // Fetch all students from API
   const fetchAllStudents = async () => {
-    setLoading(true);
+    setIsLoading(true);
     try {
-      const response = await getRef.current<{ success: boolean; data: StudentInformation[] }>(
+      const response = await getApi.current<{ success: boolean; data: StudentInformation[] }>(
         '/admin/students',
       );
       if (response.success && Array.isArray(response.data)) {
@@ -369,50 +366,53 @@ const DashboardContent = () => {
       console.error('Failed to fetch students data:', error);
       setStudents([]);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
+  // Fetch filtered students from API
   const fetchFilteredStudents = async () => {
-    setFilterLoading(true);
+    setIsFilterLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (filterCriteria.school_code) params.append('school_code', filterCriteria.school_code);
-      if (filterCriteria.student_id) params.append('student_id', filterCriteria.student_id);
-      if (filterCriteria.student_type) params.append('student_type', filterCriteria.student_type);
-      if (filterCriteria.level) params.append('level', filterCriteria.level);
+      const queryParams = new URLSearchParams();
+      if (filterCriteria.student_id) queryParams.append('student_id', filterCriteria.student_id);
+      if (filterCriteria.student_type)
+        queryParams.append('student_type', filterCriteria.student_type);
+      if (filterCriteria.level) queryParams.append('level', filterCriteria.level);
       if (filterCriteria.section_course)
-        params.append('section_course', filterCriteria.section_course);
+        queryParams.append('section_course', filterCriteria.section_course);
       if (filterCriteria.id_info_status)
-        params.append('id_info_status', filterCriteria.id_info_status);
+        queryParams.append('id_info_status', filterCriteria.id_info_status);
       if (filterCriteria.class_details_status)
-        params.append('class_details_status', filterCriteria.class_details_status);
+        queryParams.append('class_details_status', filterCriteria.class_details_status);
       if (filterCriteria.id_print_status)
-        params.append('id_print_status', filterCriteria.id_print_status);
+        queryParams.append('id_print_status', filterCriteria.id_print_status);
       if (filterCriteria.id_reprint_status)
-        params.append('id_reprint_status', filterCriteria.id_reprint_status);
+        queryParams.append('id_reprint_status', filterCriteria.id_reprint_status);
       if (filterCriteria.approved_id_info_date_from)
-        params.append('id_info_approval_date_from', filterCriteria.approved_id_info_date_from);
+        queryParams.append('id_info_approval_date_from', filterCriteria.approved_id_info_date_from);
       if (filterCriteria.approved_id_info_date_to)
-        params.append('id_info_approval_date_to', filterCriteria.approved_id_info_date_to);
+        queryParams.append('id_info_approval_date_to', filterCriteria.approved_id_info_date_to);
       if (filterCriteria.approved_class_details_date_from)
-        params.append(
+        queryParams.append(
           'class_details_approval_date_from',
           filterCriteria.approved_class_details_date_from,
         );
       if (filterCriteria.approved_class_details_date_to)
-        params.append(
+        queryParams.append(
           'class_details_approval_date_to',
           filterCriteria.approved_class_details_date_to,
         );
       if (filterCriteria.enrollment_date_from)
-        params.append('date_from', filterCriteria.enrollment_date_from);
+        queryParams.append('date_from', filterCriteria.enrollment_date_from);
       if (filterCriteria.enrollment_date_to)
-        params.append('date_to', filterCriteria.enrollment_date_to);
+        queryParams.append('date_to', filterCriteria.enrollment_date_to);
 
-      const queryString = params.toString();
-      const url = queryString ? `/admin/students?${queryString}` : '/admin/students';
-      const response = await getRef.current<{ success: boolean; data: StudentInformation[] }>(url);
+      const queryString = queryParams.toString();
+      const apiUrl = queryString ? `/admin/students?${queryString}` : '/admin/students';
+      const response = await getApi.current<{ success: boolean; data: StudentInformation[] }>(
+        apiUrl,
+      );
 
       if (response.success && Array.isArray(response.data)) {
         const studentRecords: StudentRecord[] = response.data.map((student) => ({
@@ -450,7 +450,7 @@ const DashboardContent = () => {
           id_print_date: student.id_print_date || null,
         }));
         setStudents(studentRecords);
-        setSearchText('');
+        setSearchQuery('');
         extractFilterOptions(studentRecords);
       } else {
         setStudents([]);
@@ -459,14 +459,14 @@ const DashboardContent = () => {
       console.error('Failed to fetch filtered students:', error);
       alert('Failed to apply filter');
     } finally {
-      setFilterLoading(false);
-      setFilterModalOpen(false);
+      setIsFilterLoading(false);
+      setIsFilterModalOpen(false);
     }
   };
 
-  const resetFilter = () => {
+  // Reset all filters
+  const resetAllFilters = () => {
     setFilterCriteria({
-      school_code: '',
       student_id: '',
       student_type: '',
       level: '',
@@ -483,83 +483,79 @@ const DashboardContent = () => {
       enrollment_date_to: '',
     });
     fetchAllStudents();
-    setSearchText('');
-    setFilterModalOpen(false);
+    setSearchQuery('');
+    setIsFilterModalOpen(false);
   };
 
-  const handleLevelChange = (event: SelectChangeEvent) => {
+  // Handle level selection change (updates section options)
+  const onLevelChange = (event: SelectChangeEvent) => {
     const selectedLevel = event.target.value;
     setFilterCriteria({ ...filterCriteria, level: selectedLevel, section_course: '' });
 
     if (selectedLevel) {
       let filteredSections = students;
-      if (filterCriteria.school_code) {
-        filteredSections = filteredSections.filter(
-          (s) => s.school_code === filterCriteria.school_code,
-        );
-      }
-      filteredSections = filteredSections.filter((s) => s.level === selectedLevel);
-      const sections = [
+      filteredSections = filteredSections.filter((student) => student.level === selectedLevel);
+      const uniqueSections = [
         ...new Set(filteredSections.map((s) => s.section_course).filter(Boolean)),
       ].sort();
-      setSectionOptions(sections);
+      setSectionOptions(uniqueSections);
     } else {
-      let allSections = students;
-      if (filterCriteria.school_code) {
-        allSections = allSections.filter((s) => s.school_code === filterCriteria.school_code);
-      }
-      const sections = [
+      const allSections = students;
+      const uniqueSections = [
         ...new Set(allSections.map((s) => s.section_course).filter(Boolean)),
       ].sort();
-      setSectionOptions(sections);
+      setSectionOptions(uniqueSections);
     }
   };
 
+  // Initial data fetch
   useEffect(() => {
-    if (fetchedRef.current) return;
-    fetchedRef.current = true;
+    if (hasFetched.current) return;
+    hasFetched.current = true;
     fetchAllStudents();
   }, []);
 
-  const handleRowClick = (params: GridRowParams) => {
+  // Event handlers
+  const onRowClick = (params: GridRowParams) => {
     setSelectedStudent(params.row as StudentRecord);
-    setModalOpen(true);
+    setIsModalOpen(true);
   };
 
-  const handleCloseModal = () => {
-    setModalOpen(false);
+  const closeModal = () => {
+    setIsModalOpen(false);
     setSelectedStudent(null);
   };
 
-  const handleFilterClick = () => {
-    setFilterModalOpen(true);
+  const openFilterModal = () => {
+    setIsFilterModalOpen(true);
   };
 
-  const handleFilterChange =
+  const onFilterChange =
     (field: keyof FilterCriteria) =>
     (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | SelectChangeEvent) => {
       setFilterCriteria({ ...filterCriteria, [field]: event.target.value });
     };
 
-  const applyFilter = () => {
+  const applyFilters = () => {
     fetchFilteredStudents();
   };
 
-  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchText(event.target.value);
+  const onSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(event.target.value);
   };
 
-  const columns: GridColDef[] = [
-    {
-      field: 'school_code',
-      headerName: 'School Code',
-      width: 120,
-      renderCell: (params: GridRenderCellParams) => (
-        <Typography variant="body2" sx={{ fontWeight: 500 }}>
-          {preserveCase(params.row.school_code)}
-        </Typography>
-      ),
-    },
+  // DataGrid column definitions
+  const dataGridColumns: GridColDef[] = [
+    // {
+    //   field: 'school_code',
+    //   headerName: 'School Code',
+    //   width: 120,
+    //   renderCell: (params: GridRenderCellParams) => (
+    //     <Typography variant="body2" sx={{ fontWeight: 500 }}>
+    //       {preserveOriginalCase(params.row.school_code)}
+    //     </Typography>
+    //   ),
+    // },
     {
       field: 'student_id',
       headerName: 'Student ID No.',
@@ -591,7 +587,7 @@ const DashboardContent = () => {
               {student.name_to_appear_on_id?.charAt(0) || 'S'}
             </Avatar>
             <Typography variant="body2" sx={{ fontWeight: 500 }}>
-              {preserveCase(student.name_to_appear_on_id)}
+              {preserveOriginalCase(student.name_to_appear_on_id)}
             </Typography>
           </Box>
         );
@@ -602,7 +598,7 @@ const DashboardContent = () => {
       headerName: 'Level',
       width: 100,
       renderCell: (params: GridRenderCellParams) => (
-        <Typography variant="body2">{preserveCase(params.row.level)}</Typography>
+        <Typography variant="body2">{preserveOriginalCase(params.row.level)}</Typography>
       ),
     },
     {
@@ -610,7 +606,7 @@ const DashboardContent = () => {
       headerName: 'Section/Course',
       width: 140,
       renderCell: (params: GridRenderCellParams) => (
-        <Typography variant="body2">{preserveCase(params.row.section_course)}</Typography>
+        <Typography variant="body2">{preserveOriginalCase(params.row.section_course)}</Typography>
       ),
     },
     {
@@ -618,8 +614,8 @@ const DashboardContent = () => {
       headerName: 'Enrollment Date',
       width: 140,
       renderCell: (params: GridRenderCellParams) => {
-        const date = new Date(params.row.created_at);
-        return date.toLocaleDateString('en-US', {
+        const enrollmentDate = new Date(params.row.created_at);
+        return enrollmentDate.toLocaleDateString('en-US', {
           year: 'numeric',
           month: 'short',
           day: 'numeric',
@@ -632,8 +628,8 @@ const DashboardContent = () => {
       width: 130,
       renderCell: (params: GridRenderCellParams) => (
         <Chip
-          label={formatStatus(params.row.id_info_status)}
-          color={getStatusColor(params.row.id_info_status) as any}
+          label={formatStatusLabel(params.row.id_info_status)}
+          color={getStatusBadgeColor(params.row.id_info_status) as any}
           size="small"
           sx={{ fontWeight: 500 }}
         />
@@ -645,8 +641,8 @@ const DashboardContent = () => {
       width: 160,
       renderCell: (params: GridRenderCellParams) => {
         if (!params.row.id_info_approval_date) return <Typography variant="body2">—</Typography>;
-        const date = new Date(params.row.id_info_approval_date);
-        return date.toLocaleDateString('en-US', {
+        const approvalDate = new Date(params.row.id_info_approval_date);
+        return approvalDate.toLocaleDateString('en-US', {
           year: 'numeric',
           month: 'short',
           day: 'numeric',
@@ -659,8 +655,8 @@ const DashboardContent = () => {
       width: 160,
       renderCell: (params: GridRenderCellParams) => (
         <Chip
-          label={formatStatus(params.row.class_details_status)}
-          color={getStatusColor(params.row.class_details_status) as any}
+          label={formatStatusLabel(params.row.class_details_status)}
+          color={getStatusBadgeColor(params.row.class_details_status) as any}
           size="small"
           sx={{ fontWeight: 500 }}
         />
@@ -669,12 +665,12 @@ const DashboardContent = () => {
     {
       field: 'class_details_approval_date',
       headerName: 'Class Details Approval Date',
-      width: 180,
+      width: 200,
       renderCell: (params: GridRenderCellParams) => {
         if (!params.row.class_details_approval_date)
           return <Typography variant="body2">—</Typography>;
-        const date = new Date(params.row.class_details_approval_date);
-        return date.toLocaleDateString('en-US', {
+        const approvalDate = new Date(params.row.class_details_approval_date);
+        return approvalDate.toLocaleDateString('en-US', {
           year: 'numeric',
           month: 'short',
           day: 'numeric',
@@ -687,8 +683,8 @@ const DashboardContent = () => {
       width: 140,
       renderCell: (params: GridRenderCellParams) => (
         <Chip
-          label={formatStatus(params.row.id_print_status)}
-          color={getStatusColor(params.row.id_print_status) as any}
+          label={formatStatusLabel(params.row.id_print_status)}
+          color={getStatusBadgeColor(params.row.id_print_status) as any}
           size="small"
           sx={{ fontWeight: 500 }}
         />
@@ -700,8 +696,8 @@ const DashboardContent = () => {
       width: 140,
       renderCell: (params: GridRenderCellParams) => {
         if (!params.row.id_print_date) return <Typography variant="body2">—</Typography>;
-        const date = new Date(params.row.id_print_date);
-        return date.toLocaleDateString('en-US', {
+        const printDate = new Date(params.row.id_print_date);
+        return printDate.toLocaleDateString('en-US', {
           year: 'numeric',
           month: 'short',
           day: 'numeric',
@@ -710,7 +706,7 @@ const DashboardContent = () => {
     },
   ];
 
-  if (loading) {
+  if (isLoading) {
     return <PageLoader />;
   }
 
@@ -718,6 +714,7 @@ const DashboardContent = () => {
     <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
       {/* Statistics Cards - Row 1 */}
       <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: { xs: 3, sm: 4 } }}>
+        {/* Card 1: Total Students */}
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             variant="outlined"
@@ -740,7 +737,7 @@ const DashboardContent = () => {
                       fontSize: { xs: '1.5rem', sm: '2rem' },
                     }}
                   >
-                    {statistics.total}
+                    {statistics.total_students}
                   </Typography>
                 </Box>
                 <Box sx={{ bgcolor: '#e0e7ff', p: 1, borderRadius: 2 }}>
@@ -751,6 +748,7 @@ const DashboardContent = () => {
           </Card>
         </Grid>
 
+        {/* Card 2: Approved ID Info */}
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             variant="outlined"
@@ -773,7 +771,7 @@ const DashboardContent = () => {
                       fontSize: { xs: '1.5rem', sm: '2rem' },
                     }}
                   >
-                    {statistics.approvedIdInfo}
+                    {statistics.approved_id_info_count}
                   </Typography>
                 </Box>
                 <Box sx={{ bgcolor: '#d1fae5', p: 1, borderRadius: 2 }}>
@@ -784,6 +782,7 @@ const DashboardContent = () => {
           </Card>
         </Grid>
 
+        {/* Card 3: Pending ID Info */}
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             variant="outlined"
@@ -806,7 +805,7 @@ const DashboardContent = () => {
                       fontSize: { xs: '1.5rem', sm: '2rem' },
                     }}
                   >
-                    {statistics.pendingIdInfo}
+                    {statistics.pending_id_info_count}
                   </Typography>
                 </Box>
                 <Box sx={{ bgcolor: '#fef3c7', p: 1, borderRadius: 2 }}>
@@ -817,6 +816,7 @@ const DashboardContent = () => {
           </Card>
         </Grid>
 
+        {/* Card 4: Approved Class Details */}
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             variant="outlined"
@@ -839,7 +839,7 @@ const DashboardContent = () => {
                       fontSize: { xs: '1.5rem', sm: '2rem' },
                     }}
                   >
-                    {statistics.approvedClassDetails}
+                    {statistics.approved_class_details_count}
                   </Typography>
                 </Box>
                 <Box sx={{ bgcolor: '#d1fae5', p: 1, borderRadius: 2 }}>
@@ -853,6 +853,7 @@ const DashboardContent = () => {
 
       {/* Statistics Cards - Row 2 */}
       <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: { xs: 3, sm: 4 } }}>
+        {/* Card 5: Pending Class Details */}
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             variant="outlined"
@@ -875,7 +876,7 @@ const DashboardContent = () => {
                       fontSize: { xs: '1.5rem', sm: '2rem' },
                     }}
                   >
-                    {statistics.pendingClassDetails}
+                    {statistics.pending_class_details_count}
                   </Typography>
                 </Box>
                 <Box sx={{ bgcolor: '#fef3c7', p: 1, borderRadius: 2 }}>
@@ -886,6 +887,7 @@ const DashboardContent = () => {
           </Card>
         </Grid>
 
+        {/* Card 6: Printed IDs */}
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             variant="outlined"
@@ -908,7 +910,7 @@ const DashboardContent = () => {
                       fontSize: { xs: '1.5rem', sm: '2rem' },
                     }}
                   >
-                    {statistics.printedIds}
+                    {statistics.printed_ids_count}
                   </Typography>
                 </Box>
                 <Box sx={{ bgcolor: '#d1fae5', p: 1, borderRadius: 2 }}>
@@ -919,6 +921,7 @@ const DashboardContent = () => {
           </Card>
         </Grid>
 
+        {/* Card 7: Total Pending IDs */}
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             variant="outlined"
@@ -941,7 +944,7 @@ const DashboardContent = () => {
                       fontSize: { xs: '1.5rem', sm: '2rem' },
                     }}
                   >
-                    {statistics.totalPendingIds}
+                    {statistics.total_pending_ids_count}
                   </Typography>
                 </Box>
                 <Box sx={{ bgcolor: '#fef3c7', p: 1, borderRadius: 2 }}>
@@ -952,6 +955,7 @@ const DashboardContent = () => {
           </Card>
         </Grid>
 
+        {/* Card 8: Total Reprinted IDs */}
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             variant="outlined"
@@ -974,7 +978,7 @@ const DashboardContent = () => {
                       fontSize: { xs: '1.5rem', sm: '2rem' },
                     }}
                   >
-                    {statistics.totalReprintedIds}
+                    {statistics.total_reprinted_ids_count}
                   </Typography>
                 </Box>
                 <Box sx={{ bgcolor: '#ede9fe', p: 1, borderRadius: 2 }}>
@@ -1001,11 +1005,11 @@ const DashboardContent = () => {
         >
           <TextField
             placeholder="Search..."
-            value={searchText}
-            onChange={handleSearchChange}
+            value={searchQuery}
+            onChange={onSearchChange}
             size="small"
             variant="outlined"
-            fullWidth={isMobile}
+            fullWidth={isMobileDevice}
             sx={{
               width: { xs: '100%', sm: 300 },
               '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: '#fff', height: 40 },
@@ -1021,8 +1025,8 @@ const DashboardContent = () => {
           <Button
             variant="outlined"
             startIcon={<IconifyIcon icon="mdi:filter" />}
-            onClick={handleFilterClick}
-            fullWidth={isMobile}
+            onClick={openFilterModal}
+            fullWidth={isMobileDevice}
             sx={{
               textTransform: 'none',
               borderColor: '#e2e8f0',
@@ -1037,24 +1041,24 @@ const DashboardContent = () => {
 
       {/* Filter Modal */}
       <Dialog
-        open={filterModalOpen}
-        onClose={() => setFilterModalOpen(false)}
+        open={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
         title="Filter Student Records"
         maxWidth={700}
         disableBackdropClick={true}
-        showLoading={filterLoading}
+        showLoading={isFilterLoading}
         loadingTitle="Applying filter..."
         actions={[
           {
             label: 'Reset',
-            onClick: resetFilter,
+            onClick: resetAllFilters,
             color: 'secondary',
             variant: 'outlined',
             startIcon: 'mdi:refresh',
           },
           {
             label: 'Apply Filter',
-            onClick: applyFilter,
+            onClick: applyFilters,
             color: 'primary',
             variant: 'contained',
             startIcon: 'mdi:filter',
@@ -1066,21 +1070,7 @@ const DashboardContent = () => {
             direction="column"
             sx={{ mt: 1, maxHeight: '70vh', overflowY: 'auto', pr: 1 }}
           >
-            <FormControl fullWidth size="small">
-              <InputLabel>School Code</InputLabel>
-              <Select
-                value={filterCriteria.school_code}
-                label="School Code"
-                onChange={handleFilterChange('school_code')}
-              >
-                <MenuItem value="">All</MenuItem>
-                {schoolCodeOptions.map((code) => (
-                  <MenuItem key={code} value={code}>
-                    {code.toUpperCase()}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            {/* ❌ School Code removed from filter options */}
 
             <TextField
               fullWidth
@@ -1088,7 +1078,7 @@ const DashboardContent = () => {
               label="Student ID No."
               placeholder="Enter student ID number"
               value={filterCriteria.student_id}
-              onChange={handleFilterChange('student_id')}
+              onChange={onFilterChange('student_id')}
             />
 
             <FormControl fullWidth size="small">
@@ -1096,7 +1086,7 @@ const DashboardContent = () => {
               <Select
                 value={filterCriteria.student_type}
                 label="Student Type"
-                onChange={handleFilterChange('student_type')}
+                onChange={onFilterChange('student_type')}
               >
                 <MenuItem value="">All</MenuItem>
                 <MenuItem value="new">New Student</MenuItem>
@@ -1106,7 +1096,7 @@ const DashboardContent = () => {
 
             <FormControl fullWidth size="small">
               <InputLabel>Level</InputLabel>
-              <Select value={filterCriteria.level} label="Level" onChange={handleLevelChange}>
+              <Select value={filterCriteria.level} label="Level" onChange={onLevelChange}>
                 <MenuItem value="">All</MenuItem>
                 {levelOptions.map((level) => (
                   <MenuItem key={level} value={level}>
@@ -1121,7 +1111,7 @@ const DashboardContent = () => {
               <Select
                 value={filterCriteria.section_course}
                 label="Section/Course"
-                onChange={handleFilterChange('section_course')}
+                onChange={onFilterChange('section_course')}
               >
                 <MenuItem value="">All</MenuItem>
                 {sectionOptions.map((section) => (
@@ -1137,7 +1127,7 @@ const DashboardContent = () => {
               <Select
                 value={filterCriteria.id_info_status}
                 label="ID Info Status"
-                onChange={handleFilterChange('id_info_status')}
+                onChange={onFilterChange('id_info_status')}
               >
                 <MenuItem value="">All</MenuItem>
                 <MenuItem value="pending">Pending</MenuItem>
@@ -1150,7 +1140,7 @@ const DashboardContent = () => {
               <Select
                 value={filterCriteria.class_details_status}
                 label="Class Details Status"
-                onChange={handleFilterChange('class_details_status')}
+                onChange={onFilterChange('class_details_status')}
               >
                 <MenuItem value="">All</MenuItem>
                 <MenuItem value="pending">Pending</MenuItem>
@@ -1163,7 +1153,7 @@ const DashboardContent = () => {
               <Select
                 value={filterCriteria.id_print_status}
                 label="ID Printing Status"
-                onChange={handleFilterChange('id_print_status')}
+                onChange={onFilterChange('id_print_status')}
               >
                 <MenuItem value="">All</MenuItem>
                 <MenuItem value="pending">Pending</MenuItem>
@@ -1176,7 +1166,7 @@ const DashboardContent = () => {
               <Select
                 value={filterCriteria.id_reprint_status}
                 label="ID Reprint Status"
-                onChange={handleFilterChange('id_reprint_status')}
+                onChange={onFilterChange('id_reprint_status')}
               >
                 <MenuItem value="">All</MenuItem>
                 <MenuItem value="yes">Yes</MenuItem>
@@ -1196,7 +1186,7 @@ const DashboardContent = () => {
                 label="From"
                 type="date"
                 value={filterCriteria.approved_id_info_date_from}
-                onChange={handleFilterChange('approved_id_info_date_from')}
+                onChange={onFilterChange('approved_id_info_date_from')}
                 InputLabelProps={{ shrink: true }}
               />
               <TextField
@@ -1205,7 +1195,7 @@ const DashboardContent = () => {
                 label="To"
                 type="date"
                 value={filterCriteria.approved_id_info_date_to}
-                onChange={handleFilterChange('approved_id_info_date_to')}
+                onChange={onFilterChange('approved_id_info_date_to')}
                 InputLabelProps={{ shrink: true }}
               />
             </Stack>
@@ -1220,7 +1210,7 @@ const DashboardContent = () => {
                 label="From"
                 type="date"
                 value={filterCriteria.approved_class_details_date_from}
-                onChange={handleFilterChange('approved_class_details_date_from')}
+                onChange={onFilterChange('approved_class_details_date_from')}
                 InputLabelProps={{ shrink: true }}
               />
               <TextField
@@ -1229,7 +1219,7 @@ const DashboardContent = () => {
                 label="To"
                 type="date"
                 value={filterCriteria.approved_class_details_date_to}
-                onChange={handleFilterChange('approved_class_details_date_to')}
+                onChange={onFilterChange('approved_class_details_date_to')}
                 InputLabelProps={{ shrink: true }}
               />
             </Stack>
@@ -1244,7 +1234,7 @@ const DashboardContent = () => {
                 label="From"
                 type="date"
                 value={filterCriteria.enrollment_date_from}
-                onChange={handleFilterChange('enrollment_date_from')}
+                onChange={onFilterChange('enrollment_date_from')}
                 InputLabelProps={{ shrink: true }}
               />
               <TextField
@@ -1253,7 +1243,7 @@ const DashboardContent = () => {
                 label="To"
                 type="date"
                 value={filterCriteria.enrollment_date_to}
-                onChange={handleFilterChange('enrollment_date_to')}
+                onChange={onFilterChange('enrollment_date_to')}
                 InputLabelProps={{ shrink: true }}
               />
             </Stack>
@@ -1269,13 +1259,13 @@ const DashboardContent = () => {
         <DataGrid
           rowHeight={64}
           rows={filteredStudents}
-          columns={columns}
-          pageSizeOptions={isMobile ? [5, 10, 25] : [10, 25, 50]}
+          columns={dataGridColumns}
+          pageSizeOptions={isMobileDevice ? [5, 10, 25] : [10, 25, 50]}
           initialState={{
-            pagination: { paginationModel: { pageSize: isMobile ? 5 : 10 } },
+            pagination: { paginationModel: { pageSize: isMobileDevice ? 5 : 10 } },
             sorting: { sortModel: [{ field: 'name_to_appear_on_id', sort: 'asc' }] },
           }}
-          onRowClick={handleRowClick}
+          onRowClick={onRowClick}
           slots={{
             basePagination: (props) => <DataGridPagination showFullPagination {...props} />,
           }}
@@ -1293,8 +1283,8 @@ const DashboardContent = () => {
 
       {/* Student Details Modal */}
       <Dialog
-        open={modalOpen}
-        onClose={handleCloseModal}
+        open={isModalOpen}
+        onClose={closeModal}
         title="Student Information"
         maxWidth={600}
         hideCloseButton={false}
@@ -1324,16 +1314,100 @@ const DashboardContent = () => {
                     variant="h5"
                     sx={{ fontWeight: 600, fontSize: { xs: '1.25rem', sm: '1.5rem' } }}
                   >
-                    {preserveCase(selectedStudent.name_to_appear_on_id)}
+                    {preserveOriginalCase(selectedStudent.name_to_appear_on_id)}
                   </Typography>
                 </Box>
               </Box>
 
               <Grid container spacing={2}>
-                {/* Personal Information */}
+                {/* SECTION 1: School Information */}
                 <Grid size={{ xs: 12 }}>
                   <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2563eb', mb: 1 }}>
-                    A. Personal Information
+                    A. School Information
+                  </Typography>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
+                    Level
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {preserveOriginalCase(selectedStudent.level)}
+                  </Typography>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
+                    Section/Course
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {preserveOriginalCase(selectedStudent.section_course)}
+                  </Typography>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
+                    Student Type
+                  </Typography>
+                  <Chip
+                    label={formatStudentTypeLabel(selectedStudent.student_type)}
+                    color={getStudentTypeBadgeColor(selectedStudent.student_type) as any}
+                    size="small"
+                    sx={{ fontWeight: 500, mt: 0.5 }}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
+                    DepEd ESC Grantee
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {selectedStudent.esc_voucher_recipient ? 'Yes' : 'No'}
+                  </Typography>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
+                    ESC Number
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {selectedStudent.esc_number || '—'}
+                  </Typography>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
+                    Enrollment Date
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {new Date(selectedStudent.created_at).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    })}
+                  </Typography>
+                </Grid>
+
+                <Grid size={{ xs: 12 }}>
+                  <Divider sx={{ borderColor: '#e9edf4', my: 1 }} />
+                </Grid>
+
+                {/* SECTION 2: Personal Information */}
+                <Grid size={{ xs: 12 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2563eb', mb: 1 }}>
+                    B. Personal Information
                   </Typography>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
@@ -1435,97 +1509,13 @@ const DashboardContent = () => {
                   <Divider sx={{ borderColor: '#e9edf4', my: 1 }} />
                 </Grid>
 
-                {/* School Information */}
+                {/* SECTION 3: Additional Information (ID Application Status) */}
                 <Grid size={{ xs: 12 }}>
                   <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2563eb', mb: 1 }}>
-                    B. School Information
+                    C. Additional Information
                   </Typography>
                 </Grid>
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography
-                    variant="caption"
-                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
-                  >
-                    Level
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
-                    {preserveCase(selectedStudent.level)}
-                  </Typography>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography
-                    variant="caption"
-                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
-                  >
-                    Section/Course
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
-                    {preserveCase(selectedStudent.section_course)}
-                  </Typography>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography
-                    variant="caption"
-                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
-                  >
-                    Student Type
-                  </Typography>
-                  <Chip
-                    label={formatStudentType(selectedStudent.student_type)}
-                    color={getStudentTypeColor(selectedStudent.student_type) as any}
-                    size="small"
-                    sx={{ fontWeight: 500, mt: 0.5 }}
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography
-                    variant="caption"
-                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
-                  >
-                    ESC Voucher
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
-                    {selectedStudent.esc_voucher_recipient ? 'Yes' : 'No'}
-                  </Typography>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography
-                    variant="caption"
-                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
-                  >
-                    ESC Number
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
-                    {selectedStudent.esc_number || '—'}
-                  </Typography>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography
-                    variant="caption"
-                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
-                  >
-                    Enrollment Date
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
-                    {new Date(selectedStudent.created_at).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                    })}
-                  </Typography>
-                </Grid>
-
-                <Grid size={{ xs: 12 }}>
-                  <Divider sx={{ borderColor: '#e9edf4', my: 1 }} />
-                </Grid>
-
-                {/* ID Application Status */}
-                <Grid size={{ xs: 12 }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2563eb', mb: 1 }}>
-                    C. ID Application Status
-                  </Typography>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6 }}>
+                <Grid size={{ xs: 12, sm: 12 }}>
                   <Typography
                     variant="caption"
                     sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
@@ -1533,7 +1523,7 @@ const DashboardContent = () => {
                     Name to Appear on ID Card
                   </Typography>
                   <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
-                    {preserveCase(selectedStudent.name_to_appear_on_id)}
+                    {preserveOriginalCase(selectedStudent.name_to_appear_on_id)}
                   </Typography>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
@@ -1544,8 +1534,8 @@ const DashboardContent = () => {
                     ID Info Status
                   </Typography>
                   <Chip
-                    label={formatStatus(selectedStudent.id_info_status)}
-                    color={getStatusColor(selectedStudent.id_info_status) as any}
+                    label={formatStatusLabel(selectedStudent.id_info_status)}
+                    color={getStatusBadgeColor(selectedStudent.id_info_status) as any}
                     size="small"
                     sx={{ fontWeight: 500, mt: 0.5 }}
                   />
@@ -1578,8 +1568,8 @@ const DashboardContent = () => {
                     Class Details Status
                   </Typography>
                   <Chip
-                    label={formatStatus(selectedStudent.class_details_status)}
-                    color={getStatusColor(selectedStudent.class_details_status) as any}
+                    label={formatStatusLabel(selectedStudent.class_details_status)}
+                    color={getStatusBadgeColor(selectedStudent.class_details_status) as any}
                     size="small"
                     sx={{ fontWeight: 500, mt: 0.5 }}
                   />
@@ -1612,8 +1602,8 @@ const DashboardContent = () => {
                     ID Print Status
                   </Typography>
                   <Chip
-                    label={formatStatus(selectedStudent.id_print_status)}
-                    color={getStatusColor(selectedStudent.id_print_status) as any}
+                    label={formatStatusLabel(selectedStudent.id_print_status)}
+                    color={getStatusBadgeColor(selectedStudent.id_print_status) as any}
                     size="small"
                     sx={{ fontWeight: 500, mt: 0.5 }}
                   />
@@ -1636,11 +1626,35 @@ const DashboardContent = () => {
                   </Typography>
                 </Grid>
 
+                {/* Residential Address */}
+                <Grid size={{ xs: 12 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
+                    Residential Address
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {preserveOriginalCase(selectedStudent.present_address) || 'Not provided'}
+                  </Typography>
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
+                    Emergency Contact Person and Number
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {selectedStudent.emergency_contact || 'Not provided'}
+                  </Typography>
+                </Grid>
+
                 <Grid size={{ xs: 12 }}>
                   <Divider sx={{ borderColor: '#e9edf4', my: 1 }} />
                 </Grid>
 
-                {/* Parent/Guardian Information */}
+                {/* SECTION 4: Parent/Guardian Information */}
                 <Grid size={{ xs: 12 }}>
                   <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2563eb', mb: 1 }}>
                     D. Parent/Guardian Information
@@ -1666,39 +1680,6 @@ const DashboardContent = () => {
                   </Typography>
                   <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
                     {selectedStudent.parent_email || 'Not provided'}
-                  </Typography>
-                </Grid>
-
-                <Grid size={{ xs: 12 }}>
-                  <Divider sx={{ borderColor: '#e9edf4', my: 1 }} />
-                </Grid>
-
-                {/* Address & Contact Information */}
-                <Grid size={{ xs: 12 }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2563eb', mb: 1 }}>
-                    E. Address & Contact Information
-                  </Typography>
-                </Grid>
-                <Grid size={{ xs: 12 }}>
-                  <Typography
-                    variant="caption"
-                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
-                  >
-                    Residential Address
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
-                    {preserveCase(selectedStudent.present_address) || 'Not provided'}
-                  </Typography>
-                </Grid>
-                <Grid size={{ xs: 12 }}>
-                  <Typography
-                    variant="caption"
-                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
-                  >
-                    Emergency Contact Person and Number
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
-                    {selectedStudent.emergency_contact || 'Not provided'}
                   </Typography>
                 </Grid>
               </Grid>

@@ -20,6 +20,7 @@ const IdRegistration = lazy(() => import('pages/authentication/StudentIdRegistra
 
 const Dashboard = lazy(() => import('pages/dashboard/Dashboard'));
 const Profile = lazy(() => import('pages/profile/Profile'));
+const Accounts = lazy(() => import('pages/accounts/Accounts'));
 
 const PlaceholderPage = ({ title }: { title: string }) => (
   <div style={{ padding: '2rem', textAlign: 'center' }}>{title} Page (Coming Soon)</div>
@@ -51,11 +52,11 @@ export const routes: RouteObject[] = [
         children: [
           { index: true, element: <Dashboard /> },
           { path: paths.management, element: <Profile /> },
-          { path: paths.accounts, element: <PlaceholderPage title="Accounts" /> },
-          { path: paths.monitoring, element: <PlaceholderPage title="Monitoring" /> },
+          { path: paths.accounts, element: <Accounts /> },
+          // { path: paths.monitoring, element: <PlaceholderPage title="Monitoring" /> },
           { path: paths.student_profile, element: <PlaceholderPage title="Student Profile" /> },
           { path: paths.profile, element: <Profile /> },
-          { path: paths.system_settings, element: <PlaceholderPage title="System Settings" /> },
+          // { path: paths.system_settings, element: <PlaceholderPage title="System Settings" /> },
         ],
       },
 

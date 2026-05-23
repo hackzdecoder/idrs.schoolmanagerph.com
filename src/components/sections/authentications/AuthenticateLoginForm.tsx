@@ -250,9 +250,8 @@ const AuthenticateLoginForm: React.FC = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        py: { xs: 3, sm: 4, md: 0 }, // Reduced vertical padding on mobile
+        py: { xs: 3, sm: 4, md: 0 },
         px: { xs: 2, sm: 3 },
-        // Background image only on desktop (md and up)
         backgroundImage: {
           xs: 'none',
           md: 'url("/assets/images/student-enrollment-bg.jpg")',

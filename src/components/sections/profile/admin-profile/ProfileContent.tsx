@@ -4,7 +4,6 @@ import {
   Box,
   Button,
   Chip,
-  Divider,
   FormControl,
   InputAdornment,
   InputLabel,
@@ -100,16 +99,11 @@ interface StudentRecord {
   parent_surname?: string | null;
 }
 
+// ✅ Updated FilterCriteria - only 3 filters for School Admin
 interface FilterCriteria {
   student_id: string;
-  enrollment_date_from: string;
-  enrollment_date_to: string;
   student_type: string;
   id_info_status: string;
-  class_details_status: string;
-  id_print_status: string;
-  id_reprint_status: string;
-  account_status: string;
 }
 
 const getStatusColor = (status: string) => {
@@ -139,7 +133,6 @@ const getStatusColor = (status: string) => {
 };
 
 // Helper function to get student photo URL
-// Pattern: https://schoolmanagerph.com/idrs-school-ids/{school_code}/{student_id}_{surname}.jpg
 const getStudentPhotoUrl = (schoolCode: string, studentId: string, surname: string): string => {
   if (!schoolCode || !studentId || !surname) return '';
   return `https://schoolmanagerph.com/idrs-school-ids/${schoolCode}/${studentId}_${surname}.jpg`;
@@ -160,16 +153,11 @@ const ProfileContent = () => {
   const fetchedRef = useRef(false);
   const getRef = useRef(get);
 
+  // ✅ Updated filterCriteria state
   const [filterCriteria, setFilterCriteria] = useState<FilterCriteria>({
     student_id: '',
-    enrollment_date_from: '',
-    enrollment_date_to: '',
     student_type: '',
     id_info_status: '',
-    class_details_status: '',
-    id_print_status: '',
-    id_reprint_status: '',
-    account_status: '',
   });
 
   const filteredStudents = useMemo(() => {
@@ -238,26 +226,15 @@ const ProfileContent = () => {
     }
   };
 
+  // ✅ Updated fetchFilteredStudents - only sends 3 filter params
   const fetchFilteredStudents = async () => {
     setFilterLoading(true);
     try {
       const params = new URLSearchParams();
       if (filterCriteria.student_id) params.append('student_id', filterCriteria.student_id);
-      if (filterCriteria.enrollment_date_from)
-        params.append('date_from', filterCriteria.enrollment_date_from);
-      if (filterCriteria.enrollment_date_to)
-        params.append('date_to', filterCriteria.enrollment_date_to);
       if (filterCriteria.student_type) params.append('student_type', filterCriteria.student_type);
       if (filterCriteria.id_info_status)
         params.append('id_info_status', filterCriteria.id_info_status);
-      if (filterCriteria.class_details_status)
-        params.append('class_details_status', filterCriteria.class_details_status);
-      if (filterCriteria.id_print_status)
-        params.append('id_print_status', filterCriteria.id_print_status);
-      if (filterCriteria.id_reprint_status)
-        params.append('id_reprint_status', filterCriteria.id_reprint_status);
-      if (filterCriteria.account_status)
-        params.append('account_status', filterCriteria.account_status);
 
       const queryString = params.toString();
       const url = queryString ? `/admin/students?${queryString}` : '/admin/students';
@@ -313,17 +290,12 @@ const ProfileContent = () => {
     }
   };
 
+  // ✅ Updated resetFilter
   const resetFilter = () => {
     setFilterCriteria({
       student_id: '',
-      enrollment_date_from: '',
-      enrollment_date_to: '',
       student_type: '',
       id_info_status: '',
-      class_details_status: '',
-      id_print_status: '',
-      id_reprint_status: '',
-      account_status: '',
     });
     fetchAllStudents();
     setSearchText('');
@@ -510,7 +482,6 @@ const ProfileContent = () => {
 
   if (loading) return <PageLoader />;
 
-  // If showing student details, render StudentDetails component instead of the table
   if (showStudentDetails) {
     return (
       <Box sx={{ p: { xs: 2, sm: 3 }, width: '100%' }}>
@@ -533,7 +504,6 @@ const ProfileContent = () => {
 
   return (
     <Box sx={{ p: { xs: 2, sm: 3 }, width: '100%' }}>
-      {/* Header */}
       <Typography
         variant="h5"
         sx={{
@@ -543,10 +513,9 @@ const ProfileContent = () => {
           fontSize: { xs: '1.25rem', sm: '1.5rem' },
         }}
       >
-        Student Records
+        Class Details for Approval
       </Typography>
 
-      {/* Search and Filter Bar */}
       <Stack
         direction={{ xs: 'column', sm: 'row' }}
         justifyContent="space-between"
@@ -595,7 +564,7 @@ const ProfileContent = () => {
         </Stack>
       </Stack>
 
-      {/* Filter Modal */}
+      {/* ✅ Updated Filter Modal - Only 3 filters */}
       <Dialog
         open={filterModalOpen}
         onClose={() => setFilterModalOpen(false)}
@@ -623,6 +592,7 @@ const ProfileContent = () => {
         ]}
         content={
           <Stack spacing={2.5} direction="column" sx={{ mt: 1 }}>
+            {/* Student ID No. */}
             <TextField
               fullWidth
               size="small"
@@ -632,6 +602,7 @@ const ProfileContent = () => {
               onChange={handleFilterChange('student_id')}
             />
 
+            {/* Student Type */}
             <FormControl fullWidth size="small">
               <InputLabel>Student Type</InputLabel>
               <Select
@@ -645,6 +616,7 @@ const ProfileContent = () => {
               </Select>
             </FormControl>
 
+            {/* ID Info Status */}
             <FormControl fullWidth size="small">
               <InputLabel>ID Info Status</InputLabel>
               <Select
@@ -657,89 +629,10 @@ const ProfileContent = () => {
                 <MenuItem value="approved">Approved</MenuItem>
               </Select>
             </FormControl>
-
-            <FormControl fullWidth size="small">
-              <InputLabel>Class Details Status</InputLabel>
-              <Select
-                value={filterCriteria.class_details_status}
-                label="Class Details Status"
-                onChange={handleFilterChange('class_details_status')}
-              >
-                <MenuItem value="">All</MenuItem>
-                <MenuItem value="pending">Pending</MenuItem>
-                <MenuItem value="approved">Approved</MenuItem>
-              </Select>
-            </FormControl>
-
-            <FormControl fullWidth size="small">
-              <InputLabel>ID Printing Status</InputLabel>
-              <Select
-                value={filterCriteria.id_print_status}
-                label="ID Printing Status"
-                onChange={handleFilterChange('id_print_status')}
-              >
-                <MenuItem value="">All</MenuItem>
-                <MenuItem value="pending">Pending</MenuItem>
-                <MenuItem value="printed">Printed</MenuItem>
-              </Select>
-            </FormControl>
-
-            <FormControl fullWidth size="small">
-              <InputLabel>ID Reprint Status</InputLabel>
-              <Select
-                value={filterCriteria.id_reprint_status}
-                label="ID Reprint Status"
-                onChange={handleFilterChange('id_reprint_status')}
-              >
-                <MenuItem value="">All</MenuItem>
-                <MenuItem value="yes">Yes</MenuItem>
-                <MenuItem value="no">No</MenuItem>
-              </Select>
-            </FormControl>
-
-            <FormControl fullWidth size="small">
-              <InputLabel>Account Status</InputLabel>
-              <Select
-                value={filterCriteria.account_status}
-                label="Account Status"
-                onChange={handleFilterChange('account_status')}
-              >
-                <MenuItem value="">All</MenuItem>
-                <MenuItem value="active">Active</MenuItem>
-                <MenuItem value="inactive">Inactive</MenuItem>
-              </Select>
-            </FormControl>
-
-            <Divider />
-
-            <Typography variant="subtitle2" sx={{ color: '#64748b', fontWeight: 500 }}>
-              Date Range
-            </Typography>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <TextField
-                fullWidth
-                size="small"
-                label="From"
-                type="date"
-                value={filterCriteria.enrollment_date_from}
-                onChange={handleFilterChange('enrollment_date_from')}
-                InputLabelProps={{ shrink: true }}
-              />
-              <TextField
-                fullWidth
-                size="small"
-                label="To"
-                type="date"
-                value={filterCriteria.enrollment_date_to}
-                onChange={handleFilterChange('enrollment_date_to')}
-                InputLabelProps={{ shrink: true }}
-              />
-            </Stack>
           </Stack>
         }
       />
 
-      {/* DataGrid */}
       <Paper
         elevation={0}
         sx={{

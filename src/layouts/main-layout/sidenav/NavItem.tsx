@@ -1,6 +1,5 @@
 import { MouseEvent, useEffect, useMemo, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router';
-// ✅ Add useNavigate
 import { Box, Collapse } from '@mui/material';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
@@ -12,14 +11,12 @@ import { cssVarRgba } from 'lib/utils';
 import { useBreakpoints } from 'providers/BreakpointsProvider';
 import { useSettingsContext } from 'providers/SettingsProvider';
 import { COLLAPSE_NAVBAR } from 'reducers/SettingsReducer';
-// ✅ Add this
 import paths from 'routes/paths';
 import { SubMenuItem } from 'routes/sitemap';
 import IconifyIcon from 'components/base/IconifyIcon';
+import { OnLoader } from 'components/dialogs/Dialog';
 import { useNavContext } from '../NavProvider';
 import NavItemPopper from './NavItemPopper';
-
-// ✅ Add this
 
 interface NavItemProps {
   item: SubMenuItem;
@@ -34,9 +31,12 @@ interface NavItemCollapseProps {
 const NavItem = ({ item, level }: NavItemProps) => {
   const [anchorEl, setAnchorEl] = useState<HTMLDivElement | null>(null);
   const [openPopperMenu, setOpenPopperMenu] = useState(false);
+  const [logoutModalOpen, setLogoutModalOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [userRole, setUserRole] = useState<string>('');
   const { pathname } = useLocation();
-  const navigate = useNavigate(); // ✅ Add navigate
-  const { post } = useRouteApiSetup(); // ✅ Add API hook
+  const navigate = useNavigate();
+  const { post } = useRouteApiSetup();
   const { setOpenItems, openItems, isNestedItemOpen } = useNavContext();
   const { currentBreakpoint, up } = useBreakpoints();
   const upLg = up('lg');
@@ -48,29 +48,57 @@ const NavItem = ({ item, level }: NavItemProps) => {
 
   const hasNestedItems = useMemo(() => Object.prototype.hasOwnProperty.call(item, 'items'), [item]);
 
-  // ✅ Add logout handler
+  // ✅ Get user role from localStorage on mount
+  useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        setUserRole(user.role || '');
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+      }
+    }
+  }, []);
+
+  // ✅ Get the correct login page based on role
+  const getLoginPageByRole = (role: string): string => {
+    switch (role) {
+      case 'Super Admin':
+      case 'Admin':
+        return paths.admin_login;
+      case 'Student':
+        return paths.authenticate_login;
+      default:
+        return paths.login;
+    }
+  };
+
+  // ✅ Logout handler - uses role-based redirect
   const handleLogout = async () => {
+    if (isLoggingOut) return;
+
+    setLogoutModalOpen(true);
+    setIsLoggingOut(true);
+
     try {
       await post('/logout');
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      // Clear all localStorage items
       localStorage.removeItem('access_token');
       localStorage.removeItem('user');
       localStorage.removeItem('access_expires_at');
       localStorage.removeItem('student_info');
       localStorage.removeItem('existing_student_data');
       localStorage.removeItem('existing_student_school_code');
-      localStorage.removeItem('first_user_username');
-      localStorage.removeItem('first_user_fullname');
-      localStorage.removeItem('first_user_token');
-      localStorage.removeItem('first_user_otp_verified');
-      localStorage.removeItem('first_user_email');
-      localStorage.removeItem('user_school_code');
 
-      // Navigate to login page
-      navigate(paths.login, { replace: true });
+      setLogoutModalOpen(false);
+
+      // ✅ Redirect based on user role
+      navigate(getLoginPageByRole(userRole), { replace: true });
+
+      setIsLoggingOut(false);
     }
   };
 
@@ -278,6 +306,9 @@ const NavItem = ({ item, level }: NavItemProps) => {
       </ListItem>
 
       {hasNestedItems && !sidenavCollapsed && <NavItemCollapse item={item} level={level} />}
+
+      {/* ✅ Logout Loading Overlay */}
+      <OnLoader open={logoutModalOpen} title="Logging Out..." size={40} thickness={4} />
     </>
   );
 };
