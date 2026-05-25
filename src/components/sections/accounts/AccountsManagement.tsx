@@ -668,7 +668,7 @@ const SchoolManagement = () => {
           },
         ]}
         content={
-          <Stack spacing={2.5}>
+          <Stack direction="column" spacing={2.5}>
             <Box>
               <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
                 School Logo
@@ -1534,7 +1534,7 @@ const UserManagement = () => {
           },
         ]}
         content={
-          <Stack spacing={2}>
+          <Stack direction="column" spacing={2}>
             <Typography variant="body2">
               Reset password for: <strong>{menuUser?.account_name}</strong> ({menuUser?.username})
             </Typography>
