@@ -55,7 +55,7 @@ const sitemap: MenuItem[] = [
         pathName: 'accounts',
         icon: 'material-symbols:group-outline',
         active: true,
-        roles: ['Super Admin', 'Admin', 'Accounting'],
+        roles: ['Super Admin'],
       },
       {
         name: 'Profile',

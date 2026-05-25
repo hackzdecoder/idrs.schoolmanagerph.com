@@ -1,28 +1,38 @@
+// app/src/components/auth/AuthGuard.tsx
 import { ReactNode, useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { Navigate, useLocation } from 'react-router-dom';
 import paths from 'routes/paths';
-import MainLoader from 'components/loading/MainLoader';
+import PageLoader from 'components/loading/PageLoader';
 
-const AuthGuard = ({ children }: { children: ReactNode }) => {
-  const navigate = useNavigate();
+interface AuthGuardProps {
+  children: ReactNode;
+}
+
+const AuthGuard = ({ children }: AuthGuardProps) => {
   const location = useLocation();
-  const [isLoading, setIsLoading] = useState(true);
+  const [isChecking, setIsChecking] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('access_token');
     const userStr = localStorage.getItem('user');
 
     if (token && userStr) {
-      console.log('AuthGuard - Authenticated, showing content');
-      setIsLoading(false);
-    } else {
-      console.log('AuthGuard - Not authenticated, redirecting to student login');
-      navigate(paths.authenticate_login, { replace: true });
+      setIsAuthenticated(true);
+      // Store the current page as last visited when authenticated
+      if (location.pathname !== '/') {
+        sessionStorage.setItem('lastVisitedPage', location.pathname);
+      }
     }
-  }, [navigate, location.pathname]);
+    setIsChecking(false);
+  }, [location.pathname]);
 
-  if (isLoading) {
-    return <MainLoader />;
+  if (isChecking) {
+    return <PageLoader />;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to={paths.authenticate_login} replace />;
   }
 
   return <>{children}</>;

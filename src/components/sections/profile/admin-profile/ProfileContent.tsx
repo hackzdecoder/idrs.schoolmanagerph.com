@@ -1,3 +1,4 @@
+// app/src/components/sections/profile/admin-profile/ProfileContent.tsx
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Avatar,
@@ -99,11 +100,13 @@ interface StudentRecord {
   parent_surname?: string | null;
 }
 
-// ✅ Updated FilterCriteria - only 3 filters for School Admin
+// ✅ Updated FilterCriteria - with Level and Section/Course
 interface FilterCriteria {
   student_id: string;
   student_type: string;
   id_info_status: string;
+  level: string;
+  section_course: string;
 }
 
 const getStatusColor = (status: string) => {
@@ -153,11 +156,17 @@ const ProfileContent = () => {
   const fetchedRef = useRef(false);
   const getRef = useRef(get);
 
-  // ✅ Updated filterCriteria state
+  // ✅ Options for dropdowns
+  const [levelOptions, setLevelOptions] = useState<string[]>([]);
+  const [sectionOptions, setSectionOptions] = useState<string[]>([]);
+
+  // ✅ Updated filterCriteria state with level and section_course
   const [filterCriteria, setFilterCriteria] = useState<FilterCriteria>({
     student_id: '',
     student_type: '',
     id_info_status: '',
+    level: '',
+    section_course: '',
   });
 
   const filteredStudents = useMemo(() => {
@@ -172,11 +181,21 @@ const ProfileContent = () => {
     );
   }, [students, searchText]);
 
+  const extractFilterOptions = (studentRecords: StudentRecord[]) => {
+    const uniqueLevels = [...new Set(studentRecords.map((s) => s.level).filter(Boolean))].sort();
+    const uniqueSections = [
+      ...new Set(studentRecords.map((s) => s.section_course).filter(Boolean)),
+    ].sort();
+    setLevelOptions(uniqueLevels);
+    setSectionOptions(uniqueSections);
+  };
+
   const fetchAllStudents = async () => {
     setLoading(true);
     try {
+      // ✅ Add ?pending_only=true to only get pending records
       const response = await getRef.current<{ success: boolean; data: StudentInformation[] }>(
-        '/admin/students',
+        '/admin/students?pending_only=true',
       );
       if (response.success && Array.isArray(response.data)) {
         const studentRecords: StudentRecord[] = response.data.map((student) => ({
@@ -215,6 +234,7 @@ const ProfileContent = () => {
           parent_surname: student.parent_surname || null,
         }));
         setStudents(studentRecords);
+        extractFilterOptions(studentRecords);
       } else {
         setStudents([]);
       }
@@ -226,7 +246,7 @@ const ProfileContent = () => {
     }
   };
 
-  // ✅ Updated fetchFilteredStudents - only sends 3 filter params
+  // Replace the fetchFilteredStudents function with this:
   const fetchFilteredStudents = async () => {
     setFilterLoading(true);
     try {
@@ -235,9 +255,17 @@ const ProfileContent = () => {
       if (filterCriteria.student_type) params.append('student_type', filterCriteria.student_type);
       if (filterCriteria.id_info_status)
         params.append('id_info_status', filterCriteria.id_info_status);
+      if (filterCriteria.level) params.append('level', filterCriteria.level);
+      if (filterCriteria.section_course)
+        params.append('section_course', filterCriteria.section_course);
+
+      // ✅ Add pending_only=true to maintain pending filter
+      params.append('pending_only', 'true');
 
       const queryString = params.toString();
-      const url = queryString ? `/admin/students?${queryString}` : '/admin/students';
+      const url = queryString
+        ? `/admin/students?${queryString}`
+        : '/admin/students?pending_only=true';
       const response = await getRef.current<{ success: boolean; data: StudentInformation[] }>(url);
 
       if (response.success && Array.isArray(response.data)) {
@@ -277,6 +305,7 @@ const ProfileContent = () => {
           parent_surname: student.parent_surname || null,
         }));
         setStudents(studentRecords);
+        extractFilterOptions(studentRecords);
         setSearchText('');
       } else {
         setStudents([]);
@@ -296,6 +325,8 @@ const ProfileContent = () => {
       student_id: '',
       student_type: '',
       id_info_status: '',
+      level: '',
+      section_course: '',
     });
     fetchAllStudents();
     setSearchText('');
@@ -335,7 +366,10 @@ const ProfileContent = () => {
       headerName: 'Student ID No.',
       width: 150,
       renderCell: (params: GridRenderCellParams) => (
-        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+        <Typography
+          variant="body2"
+          sx={{ fontWeight: 500, whiteSpace: 'normal', wordWrap: 'break-word' }}
+        >
           {params.row.student_id}
         </Typography>
       ),
@@ -343,7 +377,7 @@ const ProfileContent = () => {
     {
       field: 'name_to_appear_on_id',
       headerName: 'Student Name',
-      width: 200,
+      width: 220,
       renderCell: (params: GridRenderCellParams) => {
         const student = params.row as StudentRecord;
         const photoUrl = getStudentPhotoUrl(
@@ -360,7 +394,10 @@ const ProfileContent = () => {
             >
               {student.name_to_appear_on_id?.charAt(0) || 'S'}
             </Avatar>
-            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+            <Typography
+              variant="body2"
+              sx={{ fontWeight: 500, whiteSpace: 'normal', wordWrap: 'break-word' }}
+            >
               {student.name_to_appear_on_id}
             </Typography>
           </Box>
@@ -370,36 +407,44 @@ const ProfileContent = () => {
     {
       field: 'level',
       headerName: 'Level',
-      width: 100,
+      width: 80,
       renderCell: (params: GridRenderCellParams) => (
-        <Typography variant="body2">{params.row.level || '—'}</Typography>
+        <Typography variant="body2" sx={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>
+          {params.row.level || '—'}
+        </Typography>
       ),
     },
     {
       field: 'section_course',
       headerName: 'Section/Course',
-      width: 140,
+      width: 130,
       renderCell: (params: GridRenderCellParams) => (
-        <Typography variant="body2">{params.row.section_course || '—'}</Typography>
+        <Typography variant="body2" sx={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>
+          {params.row.section_course || '—'}
+        </Typography>
       ),
     },
     {
       field: 'created_at',
       headerName: 'Enrollment Date',
-      width: 140,
+      width: 130,
       renderCell: (params: GridRenderCellParams) => {
         const date = new Date(params.row.created_at);
-        return date.toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-        });
+        return (
+          <Typography variant="body2" sx={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>
+            {date.toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric',
+            })}
+          </Typography>
+        );
       },
     },
     {
       field: 'id_info_status',
       headerName: 'ID Info Status',
-      width: 130,
+      width: 115,
       renderCell: (params: GridRenderCellParams) => (
         <Chip
           label={params.row.id_info_status}
@@ -412,21 +457,25 @@ const ProfileContent = () => {
     {
       field: 'id_info_approval_date',
       headerName: 'ID Info Approval Date',
-      width: 160,
+      width: 165,
       renderCell: (params: GridRenderCellParams) => {
         if (!params.row.id_info_approval_date) return <Typography variant="body2">—</Typography>;
         const date = new Date(params.row.id_info_approval_date);
-        return date.toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-        });
+        return (
+          <Typography variant="body2" sx={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>
+            {date.toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric',
+            })}
+          </Typography>
+        );
       },
     },
     {
       field: 'class_details_status',
       headerName: 'Class Details Status',
-      width: 160,
+      width: 150,
       renderCell: (params: GridRenderCellParams) => (
         <Chip
           label={params.row.class_details_status}
@@ -439,22 +488,26 @@ const ProfileContent = () => {
     {
       field: 'class_details_approval_date',
       headerName: 'Class Details Approval Date',
-      width: 180,
+      width: 205,
       renderCell: (params: GridRenderCellParams) => {
         if (!params.row.class_details_approval_date)
           return <Typography variant="body2">—</Typography>;
         const date = new Date(params.row.class_details_approval_date);
-        return date.toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-        });
+        return (
+          <Typography variant="body2" sx={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>
+            {date.toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric',
+            })}
+          </Typography>
+        );
       },
     },
     {
       field: 'id_print_status',
       headerName: 'ID Print Status',
-      width: 140,
+      width: 115,
       renderCell: (params: GridRenderCellParams) => (
         <Chip
           label={params.row.id_print_status}
@@ -467,15 +520,19 @@ const ProfileContent = () => {
     {
       field: 'id_print_date',
       headerName: 'ID Print Date',
-      width: 140,
+      width: 200,
       renderCell: (params: GridRenderCellParams) => {
         if (!params.row.id_print_date) return <Typography variant="body2">—</Typography>;
         const date = new Date(params.row.id_print_date);
-        return date.toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-        });
+        return (
+          <Typography variant="body2" sx={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>
+            {date.toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric',
+            })}
+          </Typography>
+        );
       },
     },
   ];
@@ -564,7 +621,7 @@ const ProfileContent = () => {
         </Stack>
       </Stack>
 
-      {/* ✅ Updated Filter Modal - Only 3 filters */}
+      {/* ✅ Updated Filter Modal - Now with Level and Section/Course */}
       <Dialog
         open={filterModalOpen}
         onClose={() => setFilterModalOpen(false)}
@@ -629,6 +686,40 @@ const ProfileContent = () => {
                 <MenuItem value="approved">Approved</MenuItem>
               </Select>
             </FormControl>
+
+            {/* Level - ADDED */}
+            <FormControl fullWidth size="small">
+              <InputLabel>Level</InputLabel>
+              <Select
+                value={filterCriteria.level}
+                label="Level"
+                onChange={handleFilterChange('level')}
+              >
+                <MenuItem value="">All Levels</MenuItem>
+                {levelOptions.map((level) => (
+                  <MenuItem key={level} value={level}>
+                    {level}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {/* Section/Course - ADDED */}
+            <FormControl fullWidth size="small">
+              <InputLabel>Section/Course</InputLabel>
+              <Select
+                value={filterCriteria.section_course}
+                label="Section/Course"
+                onChange={handleFilterChange('section_course')}
+              >
+                <MenuItem value="">All Sections</MenuItem>
+                {sectionOptions.map((section) => (
+                  <MenuItem key={section} value={section}>
+                    {section}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Stack>
         }
       />
@@ -638,7 +729,7 @@ const ProfileContent = () => {
         sx={{
           borderRadius: 3,
           border: '1px solid #e9edf4',
-          overflow: 'hidden',
+          overflow: 'auto', // Changed from 'hidden' to 'auto' for better scrolling
           width: '100%',
         }}
       >
@@ -649,6 +740,7 @@ const ProfileContent = () => {
           pageSizeOptions={isMobile ? [5, 10, 25] : [10, 25, 50]}
           initialState={{ pagination: { paginationModel: { pageSize: isMobile ? 5 : 10 } } }}
           onRowClick={handleRowClick}
+          getRowId={(row) => row.id}
           slots={{
             basePagination: (props) => <DataGridPagination showFullPagination {...props} />,
           }}
@@ -662,6 +754,11 @@ const ProfileContent = () => {
             '& .MuiDataGrid-row': {
               cursor: 'pointer',
               '&:hover': { bgcolor: '#f5f5f5' },
+            },
+            '& .MuiDataGrid-cell': {
+              whiteSpace: 'normal', // Allow text wrapping
+              wordWrap: 'break-word', // Break long words
+              lineHeight: '1.4', // Better line height for wrapped text
             },
           }}
         />
