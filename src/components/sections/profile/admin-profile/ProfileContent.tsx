@@ -407,7 +407,7 @@ const ProfileContent = () => {
     {
       field: 'level',
       headerName: 'Level',
-      width: 80,
+      width: 100,
       renderCell: (params: GridRenderCellParams) => (
         <Typography variant="body2" sx={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>
           {params.row.level || '—'}
@@ -417,7 +417,7 @@ const ProfileContent = () => {
     {
       field: 'section_course',
       headerName: 'Section/Course',
-      width: 130,
+      width: 140,
       renderCell: (params: GridRenderCellParams) => (
         <Typography variant="body2" sx={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>
           {params.row.section_course || '—'}
@@ -427,7 +427,7 @@ const ProfileContent = () => {
     {
       field: 'created_at',
       headerName: 'Enrollment Date',
-      width: 130,
+      width: 140,
       renderCell: (params: GridRenderCellParams) => {
         const date = new Date(params.row.created_at);
         return (

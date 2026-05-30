@@ -794,7 +794,7 @@ const DashboardContent = () => {
     {
       field: 'name_to_appear_on_id',
       headerName: 'Student Name',
-      width: 200,
+      width: 220,
       renderCell: (params: GridRenderCellParams) => {
         const student = params.row as StudentRecord;
         const photoUrl = getStudentPhotoUrl(
@@ -850,7 +850,7 @@ const DashboardContent = () => {
     {
       field: 'id_info_status',
       headerName: 'ID Info Status',
-      width: 130,
+      width: 115,
       renderCell: (params: GridRenderCellParams) => (
         <Chip
           label={formatStatus(params.row.id_info_status)}
@@ -863,7 +863,7 @@ const DashboardContent = () => {
     {
       field: 'id_info_approval_date',
       headerName: 'ID Info Approval Date',
-      width: 160,
+      width: 165,
       renderCell: (params: GridRenderCellParams) => {
         if (!params.row.id_info_approval_date) return <Typography variant="body2">—</Typography>;
         const date = new Date(params.row.id_info_approval_date);
@@ -877,7 +877,7 @@ const DashboardContent = () => {
     {
       field: 'class_details_status',
       headerName: 'Class Details Status',
-      width: 160,
+      width: 150,
       renderCell: (params: GridRenderCellParams) => (
         <Chip
           label={formatStatus(params.row.class_details_status)}
@@ -890,7 +890,7 @@ const DashboardContent = () => {
     {
       field: 'class_details_approval_date',
       headerName: 'Class Details Approval Date',
-      width: 180,
+      width: 205,
       renderCell: (params: GridRenderCellParams) => {
         if (!params.row.class_details_approval_date)
           return <Typography variant="body2">—</Typography>;
@@ -905,7 +905,7 @@ const DashboardContent = () => {
     {
       field: 'id_print_status',
       headerName: 'ID Print Status',
-      width: 140,
+      width: 115,
       renderCell: (params: GridRenderCellParams) => (
         <Chip
           label={formatStatus(params.row.id_print_status)}
@@ -918,7 +918,7 @@ const DashboardContent = () => {
     {
       field: 'id_print_date',
       headerName: 'ID Print Date',
-      width: 140,
+      width: 200,
       renderCell: (params: GridRenderCellParams) => {
         if (!params.row.id_print_date) return <Typography variant="body2">—</Typography>;
         const date = new Date(params.row.id_print_date);
@@ -1776,7 +1776,8 @@ const DashboardContent = () => {
                     C. ID Application Status
                   </Typography>
                 </Grid>
-                <Grid size={{ xs: 12, sm: 6 }}>
+
+                <Grid size={{ xs: 12, sm: 12 }}>
                   <Typography
                     variant="caption"
                     sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
@@ -1787,6 +1788,8 @@ const DashboardContent = () => {
                     {preserveCase(selectedStudent.name_to_appear_on_id)}
                   </Typography>
                 </Grid>
+
+                {/* ✅ ID Info Status aligned with ID Info Approval Date */}
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <Typography
                     variant="caption"
@@ -1818,6 +1821,75 @@ const DashboardContent = () => {
                             day: 'numeric',
                           },
                         )
+                      : '—'}
+                  </Typography>
+                </Grid>
+
+                {/* ✅ Class Details Status aligned with Class Details Approval Date */}
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
+                    Class Details Status
+                  </Typography>
+                  <Chip
+                    label={formatStatus(selectedStudent.class_details_status)}
+                    color={getStatusColor(selectedStudent.class_details_status) as any}
+                    size="small"
+                    sx={{ fontWeight: 500, mt: 0.5 }}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
+                    Class Details Approval Date
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {selectedStudent.class_details_approval_date
+                      ? new Date(selectedStudent.class_details_approval_date).toLocaleDateString(
+                          'en-US',
+                          {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                          },
+                        )
+                      : '—'}
+                  </Typography>
+                </Grid>
+
+                {/* ✅ ID Print Status aligned with ID Print Date */}
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
+                    ID Print Status
+                  </Typography>
+                  <Chip
+                    label={formatStatus(selectedStudent.id_print_status)}
+                    color={getStatusColor(selectedStudent.id_print_status) as any}
+                    size="small"
+                    sx={{ fontWeight: 500, mt: 0.5 }}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
+                  >
+                    ID Print Date
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
+                    {selectedStudent.id_print_date
+                      ? new Date(selectedStudent.id_print_date).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        })
                       : '—'}
                   </Typography>
                 </Grid>

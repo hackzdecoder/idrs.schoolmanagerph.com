@@ -54,7 +54,6 @@ interface UserRecord {
   school_email: string;
   account_name: string;
   school_code: string;
-  mobile_number: string | null;
   user_role: string;
   account_status: string;
   last_successful_login: string | null;
@@ -66,7 +65,6 @@ interface UserFormData {
   school_email: string;
   account_name: string;
   school_code: string;
-  mobile_number: string;
   password: string;
   account_status: string;
 }
@@ -764,7 +762,7 @@ const SchoolManagement = () => {
 };
 
 // ============================================================
-// USER MANAGEMENT COMPONENT
+// USER MANAGEMENT COMPONENT (WITHOUT MOBILE NUMBER)
 // ============================================================
 const UserManagement = () => {
   const { get, post, put } = useRouteApiSetup();
@@ -791,7 +789,6 @@ const UserManagement = () => {
     school_email: '',
     account_name: '',
     school_code: '',
-    mobile_number: '',
     password: '',
     account_status: 'active',
   });
@@ -809,22 +806,17 @@ const UserManagement = () => {
       if (filterUserSchoolCode) params.append('school_code', filterUserSchoolCode);
       if (params.toString()) url += `?${params.toString()}`;
 
-      console.log('Fetching users from:', url); // Debug log
-
       const response = await get<ApiResponse>(url);
-
-      console.log('Fetch users response:', response); // Debug log
 
       if (response && response.success === true && Array.isArray(response.data)) {
         setUsers(response.data as UserRecord[]);
       } else {
-        console.error('Invalid response:', response);
         setUsersErrorMsg(response?.message || response?.error || 'Failed to load users');
         setUsers([]);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Fetch users error:', error);
-      setUsersErrorMsg(error?.response?.data?.error || error?.message || 'Failed to fetch users');
+      setUsersErrorMsg('Failed to fetch users');
       setUsers([]);
     } finally {
       setIsLoading(false);
@@ -876,42 +868,27 @@ const UserManagement = () => {
 
   const createUser = async () => {
     if (!validateUserForm()) return;
-
     setIsUserSubmitting(true);
-    setUsersErrorMsg(null);
     try {
-      // Prepare the data to send
       const userData = {
         username: userFormData.username,
         school_email: userFormData.school_email,
         account_name: userFormData.account_name,
         school_code: userFormData.school_code,
-        mobile_number: userFormData.mobile_number || null,
         password: userFormData.password,
         account_status: userFormData.account_status,
       };
-
-      console.log('Sending user data:', userData); // Debug log
-
       const response = await post<ApiResponse>('/super-admin/users', userData);
-
-      console.log('Response:', response); // Debug log
-
       if (response && response.success) {
         await fetchUsers();
         setIsUserFormModalOpen(false);
         resetUserForm();
         showSuccessAlert('Success!', 'Admin user created successfully.');
       } else {
-        showErrorAlert(
-          response?.message || response?.error || 'Failed to create user',
-          response?.errors,
-        );
+        showErrorAlert(response?.message || 'Failed to create user', response?.errors);
       }
-    } catch (error: any) {
-      console.error('Create user error:', error);
-      console.error('Error response:', error.response);
-      showErrorAlert(error?.response?.data?.error || error?.message || 'Failed to create user');
+    } catch {
+      showErrorAlert('Failed to create user');
     } finally {
       setIsUserSubmitting(false);
     }
@@ -920,40 +897,20 @@ const UserManagement = () => {
   const updateUser = async () => {
     if (!validateUserForm()) return;
     if (!selectedUser) return;
-
     setIsUserSubmitting(true);
-    setUsersErrorMsg(null);
     try {
-      // Create update data without password
-      const updateData = {
-        username: userFormData.username,
-        school_email: userFormData.school_email,
-        account_name: userFormData.account_name,
-        school_code: userFormData.school_code,
-        mobile_number: userFormData.mobile_number || null,
-        account_status: userFormData.account_status,
-      };
-
-      console.log('Updating user data:', updateData); // Debug log
-
+      const { password, ...updateData } = userFormData;
       const response = await put<ApiResponse>(`/super-admin/users/${selectedUser.id}`, updateData);
-
-      console.log('Update response:', response); // Debug log
-
       if (response && response.success) {
         await fetchUsers();
         setIsUserFormModalOpen(false);
         resetUserForm();
         showSuccessAlert('Success!', 'Admin user updated successfully.');
       } else {
-        showErrorAlert(
-          response?.message || response?.error || 'Failed to update user',
-          response?.errors,
-        );
+        showErrorAlert(response?.message || 'Failed to update user', response?.errors);
       }
-    } catch (error: any) {
-      console.error('Update user error:', error);
-      showErrorAlert(error?.response?.data?.error || error?.message || 'Failed to update user');
+    } catch {
+      showErrorAlert('Failed to update user');
     } finally {
       setIsUserSubmitting(false);
     }
@@ -965,27 +922,20 @@ const UserManagement = () => {
       return;
     }
     if (!menuUser) return;
-
     setIsResetting(true);
     try {
-      console.log('Resetting password for user:', menuUser.id); // Debug log
-
       const response = await post<ApiResponse>(`/super-admin/users/${menuUser.id}/reset-password`, {
         password: newPassword,
       });
-
-      console.log('Reset password response:', response); // Debug log
-
       if (response && response.success) {
         setIsPasswordModalOpen(false);
         setNewPassword('');
         showSuccessAlert('Success!', 'Password reset successfully.');
       } else {
-        showErrorAlert(response?.message || response?.error || 'Failed to reset password');
+        showErrorAlert(response?.message || 'Failed to reset password');
       }
-    } catch (error: any) {
-      console.error('Reset password error:', error);
-      showErrorAlert(error?.response?.data?.error || error?.message || 'Failed to reset password');
+    } catch {
+      showErrorAlert('Failed to reset password');
     } finally {
       setIsResetting(false);
     }
@@ -1023,7 +973,6 @@ const UserManagement = () => {
       school_email: '',
       account_name: '',
       school_code: '',
-      mobile_number: '',
       password: '',
       account_status: 'active',
     });
@@ -1046,7 +995,6 @@ const UserManagement = () => {
       school_email: user.school_email,
       account_name: user.account_name,
       school_code: user.school_code,
-      mobile_number: user.mobile_number || '',
       password: '',
       account_status: user.account_status,
     });
@@ -1060,19 +1008,11 @@ const UserManagement = () => {
     setIsPasswordModalOpen(true);
   };
 
-  // Update the userColumns - add a hidden id column for sorting
   const userColumns: GridColDef[] = [
-    {
-      field: 'id',
-      headerName: 'ID',
-      width: 0,
-      sortable: true,
-    },
     {
       field: 'account_name',
       headerName: 'Full Name',
       width: 200,
-      sortable: false, // Disable sorting on name to keep order
       renderCell: (params: GridRenderCellParams) => (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <Avatar sx={{ width: 36, height: 36, bgcolor: '#2563eb', fontSize: '0.875rem' }}>
@@ -1084,23 +1024,12 @@ const UserManagement = () => {
         </Box>
       ),
     },
-    {
-      field: 'username',
-      headerName: 'Username',
-      width: 150,
-      sortable: false,
-    },
-    {
-      field: 'school_email',
-      headerName: 'Email',
-      width: 220,
-      sortable: false,
-    },
+    { field: 'username', headerName: 'Username', width: 150 },
+    { field: 'school_email', headerName: 'Email', width: 220 },
     {
       field: 'school_code',
       headerName: 'School Code',
       width: 120,
-      sortable: false,
       renderCell: (params: GridRenderCellParams) => (
         <Chip
           label={params.row.school_code.toUpperCase()}
@@ -1110,19 +1039,9 @@ const UserManagement = () => {
       ),
     },
     {
-      field: 'mobile_number',
-      headerName: 'Mobile',
-      width: 140,
-      sortable: false,
-      renderCell: (params) => (
-        <Typography variant="body2">{params.row.mobile_number || '—'}</Typography>
-      ),
-    },
-    {
       field: 'account_status',
       headerName: 'Status',
       width: 110,
-      sortable: false,
       renderCell: (params: GridRenderCellParams) => (
         <Chip
           label={params.row.account_status === 'active' ? 'Active' : 'Inactive'}
@@ -1139,7 +1058,6 @@ const UserManagement = () => {
       field: 'last_successful_login',
       headerName: 'Last Login',
       width: 180,
-      sortable: false,
       renderCell: (params) => (
         <Typography variant="body2">{formatDate(params.row.last_successful_login)}</Typography>
       ),
@@ -1369,7 +1287,7 @@ const UserManagement = () => {
           pageSizeOptions={[10, 25, 50]}
           initialState={{
             pagination: { paginationModel: { pageSize: 10 } },
-            sorting: { sortModel: [{ field: 'id', sort: 'desc' }] }, // Sort by ID descending
+            sorting: { sortModel: [{ field: 'id', sort: 'desc' }] },
           }}
           getRowId={(row) => row.id}
           slots={{
@@ -1467,14 +1385,6 @@ const UserManagement = () => {
                 </Typography>
               )}
             </FormControl>
-            <TextField
-              fullWidth
-              size="small"
-              label="Mobile Number"
-              placeholder="09171234567"
-              value={userFormData.mobile_number}
-              onChange={(e) => setUserFormData({ ...userFormData, mobile_number: e.target.value })}
-            />
             {userFormMode === 'create' && (
               <TextField
                 fullWidth
@@ -1534,7 +1444,7 @@ const UserManagement = () => {
           },
         ]}
         content={
-          <Stack direction="column" spacing={2}>
+          <Stack spacing={2}>
             <Typography variant="body2">
               Reset password for: <strong>{menuUser?.account_name}</strong> ({menuUser?.username})
             </Typography>

@@ -569,7 +569,7 @@ const DashboardContent = () => {
     {
       field: 'name_to_appear_on_id',
       headerName: 'Student Name',
-      width: 200,
+      width: 220,
       renderCell: (params: GridRenderCellParams) => {
         const student = params.row as StudentRecord;
         const photoUrl = getStudentPhotoUrl(
@@ -625,7 +625,7 @@ const DashboardContent = () => {
     {
       field: 'id_info_status',
       headerName: 'ID Info Status',
-      width: 130,
+      width: 115,
       renderCell: (params: GridRenderCellParams) => (
         <Chip
           label={formatStatusLabel(params.row.id_info_status)}
@@ -638,7 +638,7 @@ const DashboardContent = () => {
     {
       field: 'id_info_approval_date',
       headerName: 'ID Info Approval Date',
-      width: 160,
+      width: 165,
       renderCell: (params: GridRenderCellParams) => {
         if (!params.row.id_info_approval_date) return <Typography variant="body2">—</Typography>;
         const approvalDate = new Date(params.row.id_info_approval_date);
@@ -652,7 +652,7 @@ const DashboardContent = () => {
     {
       field: 'class_details_status',
       headerName: 'Class Details Status',
-      width: 160,
+      width: 150,
       renderCell: (params: GridRenderCellParams) => (
         <Chip
           label={formatStatusLabel(params.row.class_details_status)}
@@ -665,7 +665,7 @@ const DashboardContent = () => {
     {
       field: 'class_details_approval_date',
       headerName: 'Class Details Approval Date',
-      width: 200,
+      width: 205,
       renderCell: (params: GridRenderCellParams) => {
         if (!params.row.class_details_approval_date)
           return <Typography variant="body2">—</Typography>;
@@ -680,7 +680,7 @@ const DashboardContent = () => {
     {
       field: 'id_print_status',
       headerName: 'ID Print Status',
-      width: 140,
+      width: 115,
       renderCell: (params: GridRenderCellParams) => (
         <Chip
           label={formatStatusLabel(params.row.id_print_status)}
@@ -693,7 +693,7 @@ const DashboardContent = () => {
     {
       field: 'id_print_date',
       headerName: 'ID Print Date',
-      width: 140,
+      width: 200,
       renderCell: (params: GridRenderCellParams) => {
         if (!params.row.id_print_date) return <Typography variant="body2">—</Typography>;
         const printDate = new Date(params.row.id_print_date);
