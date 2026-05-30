@@ -1,3 +1,4 @@
+// app/src/routes/router.tsx
 import { Suspense, lazy } from 'react';
 import { Navigate, Outlet, RouteObject, createBrowserRouter, useLocation } from 'react-router';
 import App from 'App';
@@ -6,6 +7,7 @@ import MainLayout from 'layouts/main-layout';
 import Page404 from 'pages/errors/Page404';
 import AuthGuard from 'components/auth/AuthGuard';
 import GuestGuard from 'components/auth/GuestGuard';
+import RoleGuard from 'components/auth/RoleGuard';
 import PageLoader from 'components/loading/PageLoader';
 import paths, { rootPaths } from './paths';
 
@@ -22,9 +24,9 @@ const Dashboard = lazy(() => import('pages/dashboard/Dashboard'));
 const Profile = lazy(() => import('pages/profile/Profile'));
 const Accounts = lazy(() => import('pages/accounts/Accounts'));
 
-const PlaceholderPage = ({ title }: { title: string }) => (
-  <div style={{ padding: '2rem', textAlign: 'center' }}>{title} Page (Coming Soon)</div>
-);
+// const PlaceholderPage = ({ title }: { title: string }) => (
+//   <div style={{ padding: '2rem', textAlign: 'center' }}>{title} Page (Coming Soon)</div>
+// );
 
 export const SuspenseOutlet = () => {
   const location = useLocation();
@@ -39,7 +41,7 @@ export const routes: RouteObject[] = [
   {
     element: <App />,
     children: [
-      // Protected routes (require authentication)
+      // Protected routes (require authentication + role access)
       {
         path: '/',
         element: (
@@ -50,13 +52,46 @@ export const routes: RouteObject[] = [
           </AuthGuard>
         ),
         children: [
-          { index: true, element: <Dashboard /> },
-          { path: paths.management, element: <Profile /> },
-          { path: paths.accounts, element: <Accounts /> },
-          // { path: paths.monitoring, element: <PlaceholderPage title="Monitoring" /> },
-          { path: paths.student_profile, element: <PlaceholderPage title="Student Profile" /> },
-          { path: paths.profile, element: <Profile /> },
-          // { path: paths.system_settings, element: <PlaceholderPage title="System Settings" /> },
+          {
+            index: true,
+            element: (
+              <RoleGuard allowedRoles={['Super Admin', 'Admin', 'Student']}>
+                <Dashboard />
+              </RoleGuard>
+            ),
+          },
+          {
+            path: paths.management,
+            element: (
+              <RoleGuard allowedRoles={['Admin']}>
+                <Profile />
+              </RoleGuard>
+            ),
+          },
+          {
+            path: paths.accounts,
+            element: (
+              <RoleGuard allowedRoles={['Super Admin']}>
+                <Accounts />
+              </RoleGuard>
+            ),
+          },
+          {
+            path: paths.student_profile,
+            element: (
+              <RoleGuard allowedRoles={['Student']}>
+                <Profile />
+              </RoleGuard>
+            ),
+          },
+          {
+            path: paths.profile,
+            element: (
+              <RoleGuard allowedRoles={['Super Admin']}>
+                <Profile />
+              </RoleGuard>
+            ),
+          },
         ],
       },
 
@@ -71,7 +106,6 @@ export const routes: RouteObject[] = [
           </GuestGuard>
         ),
         children: [
-          // Set authenticate-login as the default index route
           { index: true, element: <Navigate to={paths.authenticate_login} replace /> },
           { path: paths.login, element: <Navigate to={paths.authenticate_login} replace /> },
           { path: paths.authenticate_login, element: <AuthenticateLogin /> },

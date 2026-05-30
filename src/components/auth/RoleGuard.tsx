@@ -7,9 +7,10 @@ import PageLoader from 'components/loading/PageLoader';
 interface RoleGuardProps {
   children: ReactNode;
   allowedRoles: string[];
+  redirectTo?: string;
 }
 
-const RoleGuard = ({ children, allowedRoles }: RoleGuardProps) => {
+const RoleGuard = ({ children, allowedRoles, redirectTo = paths.root }: RoleGuardProps) => {
   const [isChecking, setIsChecking] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
 
@@ -32,7 +33,8 @@ const RoleGuard = ({ children, allowedRoles }: RoleGuardProps) => {
       } else {
         setHasAccess(false);
       }
-    } catch {
+    } catch (error) {
+      console.error('RoleGuard error:', error);
       setHasAccess(false);
     } finally {
       setIsChecking(false);
@@ -44,7 +46,7 @@ const RoleGuard = ({ children, allowedRoles }: RoleGuardProps) => {
   }
 
   if (!hasAccess) {
-    return <Navigate to={paths.root} replace />;
+    return <Navigate to={redirectTo} replace />;
   }
 
   return <>{children}</>;

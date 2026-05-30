@@ -240,7 +240,7 @@ const ProfileMenu = () => {
                 sx={{ color: 'text.secondary' }}
               />
             </ListItemIcon>
-            Student Registration Details
+            Enrollment Approval
           </MenuItem>
           <MenuItem
             onClick={handleClose}

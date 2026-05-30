@@ -315,21 +315,8 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
       return;
     }
 
-    if (student?.id_info_status?.toLowerCase() !== 'approved') {
-      Swal.fire({
-        icon: 'error',
-        title: 'Cannot Confirm Enrollment',
-        html: `
-          <div style="text-align: left;">
-            <p><strong>Student ID Information Status:</strong> ${student?.id_info_status || 'Pending'}</p>
-            <p>Student ID information must be approved first before you can confirm enrollment.</p>
-            <p>Please ask the student to complete their ID registration first.</p>
-          </div>
-        `,
-        confirmButtonColor: '#2563eb',
-      });
-      return;
-    }
+    // ✅ REMOVED: The validation that checks if ID Info Status is approved
+    // School Admin can now confirm enrollment regardless of ID Info Status
 
     // Validate required school fields
     if (!editableSchoolData.level) {

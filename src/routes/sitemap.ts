@@ -1,3 +1,4 @@
+// app/src/routes/sitemap.ts
 import { HTMLAttributeAnchorTarget } from 'react';
 import { SxProps } from '@mui/material';
 import { UserRole } from 'data/roles';
@@ -39,7 +40,7 @@ const sitemap: MenuItem[] = [
         pathName: 'dashboard',
         icon: 'material-symbols:speed-outline',
         active: true,
-        roles: ['Super Admin', 'Admin', 'Faculty', 'Student'],
+        roles: ['Super Admin', 'Admin', 'Student'],
       },
       {
         name: 'Enrollment Approval',
@@ -59,41 +60,17 @@ const sitemap: MenuItem[] = [
       },
       {
         name: 'Profile',
-        path: paths.management,
-        pathName: 'management',
-        icon: 'material-symbols:account-tree-outline',
+        path: paths.profile,
+        pathName: 'profile',
+        icon: 'material-symbols:account-circle-outline',
         active: true,
         roles: ['Super Admin'],
       },
-      // {
-      //   name: 'Monitoring',
-      //   path: paths.monitoring,
-      //   pathName: 'monitoring',
-      //   icon: 'material-symbols:monitor-outline',
-      //   active: true,
-      //   roles: ['Super Admin'],
-      // },
       {
-        name: 'Student Profile',
+        name: 'ID Registration',
         path: paths.student_profile,
         pathName: 'student-profile',
         icon: 'material-symbols:person-outline',
-        active: true,
-        roles: ['Faculty'],
-      },
-      // {
-      //   name: 'System Settings',
-      //   path: paths.system_settings,
-      //   pathName: 'system-settings',
-      //   icon: 'material-symbols:settings-outline',
-      //   active: true,
-      //   roles: ['Super Admin', 'Admin', 'Faculty'],
-      // },
-      {
-        name: 'ID Registration',
-        path: paths.profile,
-        pathName: 'profile',
-        icon: 'material-symbols:account-box-outline',
         active: true,
         roles: ['Student'],
       },
