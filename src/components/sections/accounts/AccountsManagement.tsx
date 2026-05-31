@@ -590,7 +590,7 @@ const SchoolManagement = () => {
           },
         ]}
         content={
-          <Stack spacing={2.5}>
+          <Stack direction="column" spacing={2.5}>
             <TextField
               fullWidth
               size="small"
@@ -620,7 +620,6 @@ const SchoolManagement = () => {
           pageSizeOptions={[10, 25, 50]}
           initialState={{
             pagination: { paginationModel: { pageSize: 10 } },
-            sorting: { sortModel: [{ field: 'school_name', sort: 'asc' }] },
           }}
           getRowId={(row) => row.id}
           slots={{
@@ -1287,7 +1286,6 @@ const UserManagement = () => {
           pageSizeOptions={[10, 25, 50]}
           initialState={{
             pagination: { paginationModel: { pageSize: 10 } },
-            sorting: { sortModel: [{ field: 'id', sort: 'desc' }] },
           }}
           getRowId={(row) => row.id}
           slots={{

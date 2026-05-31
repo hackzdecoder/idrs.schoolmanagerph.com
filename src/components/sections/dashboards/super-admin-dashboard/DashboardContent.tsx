@@ -1733,7 +1733,7 @@ const DashboardContent = () => {
                     variant="caption"
                     sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
                   >
-                    ESC Voucher
+                    DepEd ESC Grantee
                   </Typography>
                   <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
                     {selectedStudent.esc_voucher_recipient ? 'Yes' : 'No'}
