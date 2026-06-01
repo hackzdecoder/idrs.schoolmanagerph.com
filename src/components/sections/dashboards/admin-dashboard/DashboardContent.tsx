@@ -23,6 +23,7 @@ import {
 import Grid from '@mui/material/Grid';
 import { DataGrid, GridColDef, GridRenderCellParams, GridRowParams } from '@mui/x-data-grid';
 import useRouteApiSetup from 'hooks/useRouteApiSetup';
+import paths from 'routes/paths';
 import IconifyIcon from 'components/base/IconifyIcon';
 import { Dialog } from 'components/dialogs/Dialog';
 import PageLoader from 'components/loading/PageLoader';
@@ -853,11 +854,24 @@ const DashboardContent = () => {
 
       {/* Statistics Cards - Row 2 */}
       <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: { xs: 3, sm: 4 } }}>
-        {/* Card 5: Pending Class Details */}
+        {/* Card 5: Pending Class Details - CLICKABLE */}
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             variant="outlined"
-            sx={{ borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
+            sx={{
+              borderRadius: 3,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                transform: 'translateY(-2px)',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                borderColor: '#f59e0b',
+              },
+            }}
+            onClick={() => {
+              window.location.href = paths.management;
+            }}
           >
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Stack direction="row" alignItems="center" justifyContent="space-between">
