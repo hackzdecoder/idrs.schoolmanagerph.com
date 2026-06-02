@@ -1,12 +1,24 @@
 import React from 'react';
 import { useState } from 'react';
 import { Icon } from '@iconify/react';
-import { Alert, Avatar, Box, Button, Divider, Stack, TextField, Typography } from '@mui/material';
+import {
+  Alert,
+  Avatar,
+  Box,
+  Button,
+  Divider,
+  Link,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material';
 import Grid from '@mui/material/Grid';
 import useRouteApiSetup from 'hooks/useRouteApiSetup';
 import paths from 'routes/paths';
 import PasswordTextField from 'components/common/PasswordTextField';
+import { Dialog } from 'components/dialogs/Dialog';
 import PageLoader from 'components/loading/PageLoader';
+import PrivacyPolicyContent from '../../../helpers/PrivacyPolicyContent';
 
 // ============================================================================
 // Types & Interfaces
@@ -61,6 +73,10 @@ const AdminLoginForm: React.FC = () => {
     password: false,
   });
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Privacy Policy Modal State
+  const [privacyModalOpen, setPrivacyModalOpen] = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
 
   // ==========================================================================
   // Validation Helpers
@@ -121,6 +137,11 @@ const AdminLoginForm: React.FC = () => {
 
     if (!validateForm()) return;
 
+    if (!privacyAccepted) {
+      setSubmitError('You must accept the Privacy Policy before logging in.');
+      return;
+    }
+
     setSubmitError(null);
 
     try {
@@ -149,6 +170,23 @@ const AdminLoginForm: React.FC = () => {
   };
 
   // ==========================================================================
+  // Modal Handlers
+  // ==========================================================================
+
+  const handleOpenPrivacyModal = () => {
+    setPrivacyModalOpen(true);
+  };
+
+  const handleClosePrivacyModal = () => {
+    setPrivacyModalOpen(false);
+  };
+
+  const handleAcceptPrivacy = () => {
+    setPrivacyAccepted(true);
+    setPrivacyModalOpen(false);
+  };
+
+  // ==========================================================================
   // Render Helpers
   // ==========================================================================
 
@@ -170,131 +208,179 @@ const AdminLoginForm: React.FC = () => {
   // ==========================================================================
 
   return (
-    <Box
-      sx={{
-        minHeight: { md: '100vh' },
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        py: { xs: 2, sm: 3, md: 0 },
-        px: { xs: 2, sm: 3 },
-        // Background image only on desktop (md and up)
-        backgroundImage: {
-          xs: 'none',
-          md: 'url("/assets/images/admin-login-bg.jpg")',
-        },
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-        backgroundColor: { xs: '#f5f5f5', md: 'transparent' },
-      }}
-    >
-      <Grid
-        container
+    <>
+      <Box
         sx={{
-          maxWidth: '35rem',
-          width: '100%',
-          mx: 'auto',
+          minHeight: { md: '100vh' },
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          py: { xs: 2, sm: 3, md: 0 },
+          px: { xs: 2, sm: 3 },
+          backgroundImage: {
+            xs: 'none',
+            md: 'url("/assets/images/admin-login-bg.jpg")',
+          },
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          backgroundColor: { xs: '#f5f5f5', md: 'transparent' },
         }}
       >
-        <Grid size={12}>
-          <Box
-            sx={{
-              bgcolor: 'background.paper',
-              borderRadius: { xs: 3, sm: 4 },
-              boxShadow: { xs: 0, sm: 1 },
-              p: { xs: 2.5, sm: 4, md: 5 },
-            }}
-          >
-            {/* Header Section */}
-            <Stack
-              direction="column"
-              spacing={1.5}
+        <Grid
+          container
+          sx={{
+            maxWidth: '35rem',
+            width: '100%',
+            mx: 'auto',
+          }}
+        >
+          <Grid size={12}>
+            <Box
               sx={{
-                mb: { xs: 2, sm: 3 },
-                alignItems: 'center',
-                textAlign: 'center',
+                bgcolor: 'background.paper',
+                borderRadius: { xs: 3, sm: 4 },
+                boxShadow: { xs: 0, sm: 1 },
+                p: { xs: 2.5, sm: 4, md: 5 },
               }}
             >
-              <Avatar
+              {/* Header Section */}
+              <Stack
+                direction="column"
+                spacing={1.5}
                 sx={{
-                  width: { xs: 56, sm: 64, md: 80 },
-                  height: { xs: 56, sm: 64, md: 80 },
-                  bgcolor: '#2563eb',
+                  mb: { xs: 2, sm: 3 },
+                  alignItems: 'center',
+                  textAlign: 'center',
                 }}
               >
-                <Icon icon="mdi:shield-account" width={32} height={32} />
-              </Avatar>
-
-              <Typography
-                variant="h4"
-                sx={{ fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' } }}
-              >
-                ID Registration Portal
-              </Typography>
-
-              <Typography
-                variant="subtitle1"
-                sx={{ color: 'text.secondary', fontSize: { xs: 12, sm: 13, md: 14 } }}
-              >
-                Please provide your valid username and password
-              </Typography>
-            </Stack>
-
-            <Divider sx={{ mb: { xs: 2, sm: 3 } }} />
-
-            {/* Login Form */}
-            <Box component="form" noValidate onSubmit={handleSubmit}>
-              <Stack spacing={2.5} direction="column">
-                {renderErrorAlert()}
-
-                <TextField
-                  fullWidth
-                  size="medium"
-                  id="username"
-                  label="Username"
-                  placeholder="Enter your username"
-                  value={formData.username}
-                  onChange={handleChange('username')}
-                  onBlur={handleBlur('username')}
-                  error={touched.username && !!errors.username}
-                  helperText={touched.username && errors.username}
-                  disabled={apiLoading}
-                  autoComplete="username"
-                />
-
-                <PasswordTextField
-                  fullWidth
-                  size="medium"
-                  id="password"
-                  label="Password"
-                  placeholder="Enter your password"
-                  value={formData.password}
-                  onChange={handleChange('password')}
-                  onBlur={handleBlur('password')}
-                  error={touched.password && !!errors.password}
-                  helperText={touched.password && errors.password}
-                  disabled={apiLoading}
-                  autoComplete="current-password"
-                />
-
-                <Button
-                  fullWidth
-                  type="submit"
-                  size="large"
-                  variant="contained"
-                  color="primary"
-                  disabled={apiLoading}
-                  sx={{ py: { xs: 1.2, sm: 1.5 }, mt: { xs: 0.5, sm: 1 } }}
+                <Avatar
+                  sx={{
+                    width: { xs: 56, sm: 64, md: 80 },
+                    height: { xs: 56, sm: 64, md: 80 },
+                    bgcolor: '#2563eb',
+                  }}
                 >
-                  {apiLoading ? 'Logging in...' : 'Login'}
-                </Button>
+                  <Icon icon="mdi:shield-account" width={32} height={32} />
+                </Avatar>
+
+                <Typography
+                  variant="h4"
+                  sx={{ fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' } }}
+                >
+                  ID Registration Portal
+                </Typography>
+
+                <Typography
+                  variant="subtitle1"
+                  sx={{ color: 'text.secondary', fontSize: { xs: 12, sm: 13, md: 14 } }}
+                >
+                  Please provide your valid username and password
+                </Typography>
               </Stack>
+
+              <Divider sx={{ mb: { xs: 2, sm: 3 } }} />
+
+              {/* Login Form */}
+              <Box component="form" noValidate onSubmit={handleSubmit}>
+                <Stack spacing={2.5} direction="column">
+                  {renderErrorAlert()}
+
+                  <TextField
+                    fullWidth
+                    size="medium"
+                    id="username"
+                    label="Username"
+                    placeholder="Enter your username"
+                    value={formData.username}
+                    onChange={handleChange('username')}
+                    onBlur={handleBlur('username')}
+                    error={touched.username && !!errors.username}
+                    helperText={touched.username && errors.username}
+                    disabled={apiLoading}
+                    autoComplete="username"
+                  />
+
+                  <PasswordTextField
+                    fullWidth
+                    size="medium"
+                    id="password"
+                    label="Password"
+                    placeholder="Enter your password"
+                    value={formData.password}
+                    onChange={handleChange('password')}
+                    onBlur={handleBlur('password')}
+                    error={touched.password && !!errors.password}
+                    helperText={touched.password && errors.password}
+                    disabled={apiLoading}
+                    autoComplete="current-password"
+                  />
+
+                  <Button
+                    fullWidth
+                    type="submit"
+                    size="large"
+                    variant="contained"
+                    color="primary"
+                    disabled={apiLoading}
+                    sx={{ py: { xs: 1.2, sm: 1.5 }, mt: { xs: 0.5, sm: 1 } }}
+                  >
+                    {apiLoading ? 'Logging in...' : 'Login'}
+                  </Button>
+
+                  {/* Privacy Policy Link */}
+                  <Divider sx={{ my: 1 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      Legal
+                    </Typography>
+                  </Divider>
+
+                  {/* Privacy Policy Link - opens modal with checkbox inside */}
+                  <Stack direction="row" spacing={2} justifyContent="center">
+                    <Link
+                      component="button"
+                      type="button"
+                      variant="body2"
+                      onClick={handleOpenPrivacyModal}
+                      sx={{
+                        cursor: 'pointer',
+                        textDecoration: 'underline',
+                        '&:hover': {
+                          textDecoration: 'underline',
+                          color: 'primary.main',
+                        },
+                      }}
+                    >
+                      Privacy Policy
+                    </Link>
+                  </Stack>
+                </Stack>
+              </Box>
             </Box>
-          </Box>
+          </Grid>
         </Grid>
-      </Grid>
-    </Box>
+      </Box>
+
+      {/* Privacy Policy Modal */}
+      <Dialog
+        open={privacyModalOpen}
+        onClose={handleClosePrivacyModal}
+        title="Privacy Policy"
+        maxWidth={700}
+        disableBackdropClick={false}
+        content={
+          <PrivacyPolicyContent onAccept={handleAcceptPrivacy} onClose={handleClosePrivacyModal} />
+        }
+        actions={[
+          {
+            label: 'Close',
+            onClick: handleClosePrivacyModal,
+            color: 'secondary',
+            variant: 'outlined',
+          },
+        ]}
+      />
+    </>
   );
 };
 

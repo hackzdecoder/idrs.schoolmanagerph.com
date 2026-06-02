@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Box, Divider, Stack, Typography, useMediaQuery, useTheme } from '@mui/material';
 import useRouteApiSetup from 'hooks/useRouteApiSetup';
+import { mainDrawerWidth } from 'lib/constants';
+import { useSettingsContext } from 'providers/SettingsProvider';
+
+// ✅ Add this import
 
 const Footer = () => {
   const { get } = useRouteApiSetup();
@@ -9,6 +13,9 @@ const Footer = () => {
   const [copyrightNotice, setCopyrightNotice] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const hasFetched = useRef(false);
+  const {
+    config: { drawerWidth },
+  } = useSettingsContext();
 
   useEffect(() => {
     if (hasFetched.current) return;
@@ -47,9 +54,17 @@ const Footer = () => {
     <Box
       component="footer"
       sx={{
-        mt: 'auto', // ✅ Pushes footer to bottom
+        position: 'fixed',
+        bottom: 0,
+        right: 0,
         bgcolor: 'background.default',
-        width: '100%',
+        borderTop: `1px solid ${theme.palette.divider}`,
+        boxShadow: '0px -2px 8px rgba(0, 0, 0, 0.05)',
+        zIndex: 1100,
+        // Match the main content margin and width
+        ml: { md: `${mainDrawerWidth.collapsed}px`, lg: 0 },
+        width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` },
+        left: { xs: 0, md: 'auto' },
       }}
     >
       <Divider />
