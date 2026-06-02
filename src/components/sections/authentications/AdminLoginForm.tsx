@@ -77,6 +77,7 @@ const AdminLoginForm: React.FC = () => {
   // Privacy Policy Modal State
   const [privacyModalOpen, setPrivacyModalOpen] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [isPrivacyChecked, setIsPrivacyChecked] = useState(false);
 
   // ==========================================================================
   // Validation Helpers
@@ -186,6 +187,10 @@ const AdminLoginForm: React.FC = () => {
     setPrivacyModalOpen(false);
   };
 
+  const handlePrivacyCheckChange = (checked: boolean) => {
+    setIsPrivacyChecked(checked);
+  };
+
   // ==========================================================================
   // Render Helpers
   // ==========================================================================
@@ -211,10 +216,10 @@ const AdminLoginForm: React.FC = () => {
     <>
       <Box
         sx={{
-          minHeight: { md: '100vh' },
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          minHeight: '100vh',
           py: { xs: 2, sm: 3, md: 0 },
           px: { xs: 2, sm: 3 },
           backgroundImage: {
@@ -240,7 +245,6 @@ const AdminLoginForm: React.FC = () => {
               sx={{
                 bgcolor: 'background.paper',
                 borderRadius: { xs: 3, sm: 4 },
-                boxShadow: { xs: 0, sm: 1 },
                 p: { xs: 2.5, sm: 4, md: 5 },
               }}
             >
@@ -335,7 +339,6 @@ const AdminLoginForm: React.FC = () => {
                     </Typography>
                   </Divider>
 
-                  {/* Privacy Policy Link - opens modal with checkbox inside */}
                   <Stack direction="row" spacing={2} justifyContent="center">
                     <Link
                       component="button"
@@ -367,16 +370,23 @@ const AdminLoginForm: React.FC = () => {
         onClose={handleClosePrivacyModal}
         title="Privacy Policy"
         maxWidth={700}
-        disableBackdropClick={false}
+        hideCloseButton={true}
+        disableBackdropClick={true}
         content={
-          <PrivacyPolicyContent onAccept={handleAcceptPrivacy} onClose={handleClosePrivacyModal} />
+          <PrivacyPolicyContent
+            onAccept={handleAcceptPrivacy}
+            onClose={handleClosePrivacyModal}
+            isChecked={isPrivacyChecked}
+            onCheckChange={handlePrivacyCheckChange}
+          />
         }
         actions={[
           {
-            label: 'Close',
-            onClick: handleClosePrivacyModal,
-            color: 'secondary',
-            variant: 'outlined',
+            label: 'Accept & Continue',
+            onClick: handleAcceptPrivacy,
+            color: 'primary',
+            variant: 'contained',
+            disabled: !isPrivacyChecked,
           },
         ]}
       />

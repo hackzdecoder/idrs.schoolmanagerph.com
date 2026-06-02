@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Box,
-  Button,
   Checkbox,
   CircularProgress,
   FormControlLabel,
@@ -26,6 +25,8 @@ interface CompanyInfo {
 interface PrivacyPolicyContentProps {
   onAccept?: () => void;
   onClose?: () => void;
+  isChecked?: boolean;
+  onCheckChange?: (checked: boolean) => void;
 }
 
 // ============================================================================
@@ -60,14 +61,14 @@ const DEFAULT_COMPANY_INFO: CompanyInfo = {
 // ============================================================================
 
 const PrivacyPolicyContent: React.FC<PrivacyPolicyContentProps> = ({
-  onAccept,
-  onClose: _onClose,
+  isChecked = false,
+  onCheckChange,
 }) => {
   const { post } = useRouteApiSetup();
 
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo | null>(null);
   const [loading, setLoading] = useState(true);
-  const [accepted, setAccepted] = useState(false);
+  const [accepted, setAccepted] = useState(isChecked);
   const hasFetched = useRef(false);
 
   // ==========================================================================
@@ -111,12 +112,10 @@ const PrivacyPolicyContent: React.FC<PrivacyPolicyContentProps> = ({
   // ==========================================================================
 
   const handleAcceptChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setAccepted(event.target.checked);
-  };
-
-  const handleAcceptAndContinue = () => {
-    if (accepted && onAccept) {
-      onAccept();
+    const checked = event.target.checked;
+    setAccepted(checked);
+    if (onCheckChange) {
+      onCheckChange(checked);
     }
   };
 
@@ -745,10 +744,20 @@ const PrivacyPolicyContent: React.FC<PrivacyPolicyContentProps> = ({
       </Box>
 
       {/* ==========================================================================
-          ACCEPTANCE CHECKBOX SECTION
+          ACCEPTANCE CHECKBOX SECTION - ONLY CHECKBOX, NO BUTTON
       ========================================================================== */}
 
-      <Stack direction="column">
+      <Box
+        sx={{
+          mt: 3,
+          pt: 2,
+          borderTop: '1px solid',
+          borderColor: 'divider',
+          bottom: 0,
+          bgcolor: 'background.paper',
+          pb: 1,
+        }}
+      >
         <FormControlLabel
           control={<Checkbox checked={accepted} onChange={handleAcceptChange} color="primary" />}
           label={
@@ -758,18 +767,7 @@ const PrivacyPolicyContent: React.FC<PrivacyPolicyContentProps> = ({
             </Typography>
           }
         />
-
-        <Button
-          variant="contained"
-          color="primary"
-          fullWidth
-          disabled={!accepted}
-          onClick={handleAcceptAndContinue}
-          sx={{ mt: 2 }}
-        >
-          Accept & Continue
-        </Button>
-      </Stack>
+      </Box>
     </Stack>
   );
 };
