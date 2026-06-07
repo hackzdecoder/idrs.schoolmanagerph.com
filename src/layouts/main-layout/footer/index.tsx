@@ -4,8 +4,6 @@ import useRouteApiSetup from 'hooks/useRouteApiSetup';
 import { mainDrawerWidth } from 'lib/constants';
 import { useSettingsContext } from 'providers/SettingsProvider';
 
-// ✅ Add this import
-
 const Footer = () => {
   const { get } = useRouteApiSetup();
   const theme = useTheme();
@@ -60,7 +58,7 @@ const Footer = () => {
         bgcolor: 'background.default',
         borderTop: `1px solid ${theme.palette.divider}`,
         boxShadow: '0px -2px 8px rgba(0, 0, 0, 0.05)',
-        zIndex: 1100,
+        zIndex: 1000, // Changed from 1100 to 1000 (SweetAlert is usually 1060)
         // Match the main content margin and width
         ml: { md: `${mainDrawerWidth.collapsed}px`, lg: 0 },
         width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` },

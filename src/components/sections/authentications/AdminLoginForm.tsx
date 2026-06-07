@@ -346,10 +346,8 @@ const AdminLoginForm: React.FC = () => {
                         onClick={handleOpenTermsPrivacyModal}
                         sx={{
                           cursor: 'pointer',
-                          textDecoration: 'underline',
                           fontSize: { xs: 11, sm: 12 },
                           '&:hover': {
-                            textDecoration: 'underline',
                             color: 'primary.main',
                           },
                         }}
