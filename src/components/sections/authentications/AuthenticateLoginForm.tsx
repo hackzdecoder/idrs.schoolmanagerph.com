@@ -16,7 +16,7 @@ import useRouteApiSetup from 'hooks/useRouteApiSetup';
 import paths from 'routes/paths';
 import { Dialog } from 'components/dialogs/Dialog';
 import PageLoader from 'components/loading/PageLoader';
-import PrivacyPolicyContent from '../../../helpers/PrivacyPolicyContent';
+import TermsAndPrivacyContent from '../../../helpers/TermsAndPrivacyContent';
 
 // ============================================================================
 // Types & Interfaces
@@ -102,10 +102,10 @@ const AuthenticateLoginForm: React.FC = () => {
   });
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Privacy Policy Modal State
-  const [privacyModalOpen, setPrivacyModalOpen] = useState(false);
-  const [privacyAccepted, setPrivacyAccepted] = useState(false);
-  const [isPrivacyChecked, setIsPrivacyChecked] = useState(false);
+  // Combined Terms & Privacy Modal State
+  const [termsPrivacyModalOpen, setTermsPrivacyModalOpen] = useState(false);
+  const [termsPrivacyAccepted, setTermsPrivacyAccepted] = useState(false);
+  const [isCheckboxChecked, setIsCheckboxChecked] = useState(false);
 
   // ==========================================================================
   // Validation Helpers
@@ -201,8 +201,8 @@ const AuthenticateLoginForm: React.FC = () => {
 
       if (!validateForm()) return;
 
-      if (!privacyAccepted) {
-        setSubmitError('You must accept the Privacy Policy before logging in.');
+      if (!termsPrivacyAccepted) {
+        setSubmitError('You must accept the Terms and Privacy Policy before logging in.');
         return;
       }
 
@@ -237,28 +237,33 @@ const AuthenticateLoginForm: React.FC = () => {
         setSubmitError(errorMessage);
       }
     },
-    [formData, validateForm, post, storeUserData, storeTokenExpiry, privacyAccepted],
+    [formData, validateForm, post, storeUserData, storeTokenExpiry, termsPrivacyAccepted],
   );
 
   // ==========================================================================
   // Modal Handlers
   // ==========================================================================
 
-  const handleOpenPrivacyModal = () => {
-    setPrivacyModalOpen(true);
+  const handleOpenTermsPrivacyModal = () => {
+    setIsCheckboxChecked(false);
+    setTermsPrivacyModalOpen(true);
   };
 
-  const handleClosePrivacyModal = () => {
-    setPrivacyModalOpen(false);
+  const handleCloseTermsPrivacyModal = () => {
+    setTermsPrivacyModalOpen(false);
+    setIsCheckboxChecked(false);
   };
 
-  const handleAcceptPrivacy = () => {
-    setPrivacyAccepted(true);
-    setPrivacyModalOpen(false);
+  const handleAcceptTermsPrivacy = () => {
+    if (isCheckboxChecked) {
+      setTermsPrivacyAccepted(true);
+      setTermsPrivacyModalOpen(false);
+      setIsCheckboxChecked(false);
+    }
   };
 
-  const handlePrivacyCheckChange = (checked: boolean) => {
-    setIsPrivacyChecked(checked);
+  const handleCheckboxChange = (checked: boolean) => {
+    setIsCheckboxChecked(checked);
   };
 
   // ==========================================================================
@@ -279,7 +284,7 @@ const AuthenticateLoginForm: React.FC = () => {
   if (apiLoading) return <PageLoader />;
 
   // ==========================================================================
-  // Main Render - REMOVED minHeight to prevent unnecessary scrolling
+  // Main Render
   // ==========================================================================
 
   return (
@@ -289,7 +294,6 @@ const AuthenticateLoginForm: React.FC = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          // minHeight: '100vh',
           py: { xs: 3, sm: 4, md: 0 },
           px: { xs: 2, sm: 3 },
           backgroundImage: {
@@ -413,39 +417,39 @@ const AuthenticateLoginForm: React.FC = () => {
                       maxLength: 11,
                     }}
                   />
+                  <Divider sx={{ my: 1 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      <Stack direction="row" spacing={2} justifyContent="center">
+                        <Link
+                          component="button"
+                          type="button"
+                          variant="body2"
+                          onClick={handleOpenTermsPrivacyModal}
+                          sx={{
+                            cursor: 'pointer',
+                            textDecoration: 'none',
+                            fontSize: { xs: 11, sm: 12 },
+                            '&:hover': {
+                              color: 'primary.main',
+                            },
+                          }}
+                        >
+                          I have read and I agree to the <b>TERMS</b> and <b>PRIVACY POLICY</b>
+                        </Link>
+                      </Stack>
+                    </Typography>
+                  </Divider>
                   <Button
                     fullWidth
                     type="submit"
                     size="large"
                     variant="contained"
                     color="primary"
-                    disabled={apiLoading}
+                    disabled={apiLoading || !termsPrivacyAccepted}
                     sx={{ py: { xs: 1.2, sm: 1.5 }, mt: { xs: 0.5, sm: 1 } }}
                   >
                     {apiLoading ? 'Logging in...' : 'Login'}
                   </Button>
-
-                  {/* Privacy Policy Link */}
-                  <Divider sx={{ my: 1 }}>
-                    <Stack direction="row" spacing={2} justifyContent="center">
-                      <Link
-                        component="button"
-                        type="button"
-                        variant="body2"
-                        onClick={handleOpenPrivacyModal}
-                        sx={{
-                          cursor: 'pointer',
-                          textDecoration: 'underline',
-                          '&:hover': {
-                            textDecoration: 'underline',
-                            color: 'primary.main',
-                          },
-                        }}
-                      >
-                        Privacy Policy
-                      </Link>
-                    </Stack>
-                  </Divider>
                 </Stack>
               </Box>
             </Box>
@@ -453,29 +457,33 @@ const AuthenticateLoginForm: React.FC = () => {
         </Grid>
       </Box>
 
-      {/* Privacy Policy Modal - maxWidth uses string value */}
+      {/* Dialog with Checkbox validation */}
       <Dialog
-        open={privacyModalOpen}
-        onClose={handleClosePrivacyModal}
-        title="Privacy Policy"
+        open={termsPrivacyModalOpen}
+        onClose={handleCloseTermsPrivacyModal}
+        title="Terms & Privacy Policy"
         maxWidth={700}
-        hideCloseButton={true}
+        hideCloseButton={false}
         disableBackdropClick={true}
         content={
-          <PrivacyPolicyContent
-            onAccept={handleAcceptPrivacy}
-            onClose={handleClosePrivacyModal}
-            isChecked={isPrivacyChecked}
-            onCheckChange={handlePrivacyCheckChange}
+          <TermsAndPrivacyContent
+            onCheckboxChange={handleCheckboxChange}
+            isChecked={isCheckboxChecked}
           />
         }
         actions={[
           {
-            label: 'Accept & Continue',
-            onClick: handleAcceptPrivacy,
+            label: 'Close',
+            onClick: handleCloseTermsPrivacyModal,
+            color: 'secondary',
+            variant: 'outlined',
+          },
+          {
+            label: 'I Agree',
+            onClick: handleAcceptTermsPrivacy,
             color: 'primary',
             variant: 'contained',
-            disabled: !isPrivacyChecked,
+            disabled: !isCheckboxChecked,
           },
         ]}
       />

@@ -18,7 +18,7 @@ import paths from 'routes/paths';
 import PasswordTextField from 'components/common/PasswordTextField';
 import { Dialog } from 'components/dialogs/Dialog';
 import PageLoader from 'components/loading/PageLoader';
-import PrivacyPolicyContent from '../../../helpers/PrivacyPolicyContent';
+import TermsAndPrivacyContent from '../../../helpers/TermsAndPrivacyContent';
 
 // ============================================================================
 // Types & Interfaces
@@ -74,10 +74,10 @@ const AdminLoginForm: React.FC = () => {
   });
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Privacy Policy Modal State
-  const [privacyModalOpen, setPrivacyModalOpen] = useState(false);
-  const [privacyAccepted, setPrivacyAccepted] = useState(false);
-  const [isPrivacyChecked, setIsPrivacyChecked] = useState(false);
+  // Combined Terms & Privacy Modal State
+  const [termsPrivacyModalOpen, setTermsPrivacyModalOpen] = useState(false);
+  const [termsPrivacyAccepted, setTermsPrivacyAccepted] = useState(false);
+  const [isCheckboxChecked, setIsCheckboxChecked] = useState(false);
 
   // ==========================================================================
   // Validation Helpers
@@ -138,8 +138,8 @@ const AdminLoginForm: React.FC = () => {
 
     if (!validateForm()) return;
 
-    if (!privacyAccepted) {
-      setSubmitError('You must accept the Privacy Policy before logging in.');
+    if (!termsPrivacyAccepted) {
+      setSubmitError('You must accept the Terms and Privacy Policy before logging in.');
       return;
     }
 
@@ -174,21 +174,28 @@ const AdminLoginForm: React.FC = () => {
   // Modal Handlers
   // ==========================================================================
 
-  const handleOpenPrivacyModal = () => {
-    setPrivacyModalOpen(true);
+  const handleOpenTermsPrivacyModal = () => {
+    setIsCheckboxChecked(false);
+    setTermsPrivacyModalOpen(true);
   };
 
-  const handleClosePrivacyModal = () => {
-    setPrivacyModalOpen(false);
+  const handleCloseTermsPrivacyModal = () => {
+    setTermsPrivacyModalOpen(false);
+    setIsCheckboxChecked(false);
   };
 
-  const handleAcceptPrivacy = () => {
-    setPrivacyAccepted(true);
-    setPrivacyModalOpen(false);
+  const handleAcceptTermsPrivacy = () => {
+    console.log('Accept clicked, isCheckboxChecked:', isCheckboxChecked);
+    if (isCheckboxChecked) {
+      setTermsPrivacyAccepted(true);
+      setTermsPrivacyModalOpen(false);
+      setIsCheckboxChecked(false);
+    }
   };
 
-  const handlePrivacyCheckChange = (checked: boolean) => {
-    setIsPrivacyChecked(checked);
+  const handleCheckboxChange = (checked: boolean) => {
+    console.log('Checkbox changed in parent:', checked);
+    setIsCheckboxChecked(checked);
   };
 
   // ==========================================================================
@@ -248,7 +255,6 @@ const AdminLoginForm: React.FC = () => {
                 p: { xs: 2.5, sm: 4, md: 5 },
               }}
             >
-              {/* Header Section */}
               <Stack
                 direction="column"
                 spacing={1.5}
@@ -285,7 +291,6 @@ const AdminLoginForm: React.FC = () => {
 
               <Divider sx={{ mb: { xs: 2, sm: 3 } }} />
 
-              {/* Login Form */}
               <Box component="form" noValidate onSubmit={handleSubmit}>
                 <Stack spacing={2.5} direction="column">
                   {renderErrorAlert()}
@@ -326,37 +331,33 @@ const AdminLoginForm: React.FC = () => {
                     size="large"
                     variant="contained"
                     color="primary"
-                    disabled={apiLoading}
+                    disabled={apiLoading || !termsPrivacyAccepted}
                     sx={{ py: { xs: 1.2, sm: 1.5 }, mt: { xs: 0.5, sm: 1 } }}
                   >
                     {apiLoading ? 'Logging in...' : 'Login'}
                   </Button>
 
-                  {/* Privacy Policy Link */}
                   <Divider sx={{ my: 1 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Legal
-                    </Typography>
-                  </Divider>
-
-                  <Stack direction="row" spacing={2} justifyContent="center">
-                    <Link
-                      component="button"
-                      type="button"
-                      variant="body2"
-                      onClick={handleOpenPrivacyModal}
-                      sx={{
-                        cursor: 'pointer',
-                        textDecoration: 'underline',
-                        '&:hover': {
+                    <Stack direction="row" spacing={2} justifyContent="center">
+                      <Link
+                        component="button"
+                        type="button"
+                        variant="body2"
+                        onClick={handleOpenTermsPrivacyModal}
+                        sx={{
+                          cursor: 'pointer',
                           textDecoration: 'underline',
-                          color: 'primary.main',
-                        },
-                      }}
-                    >
-                      Privacy Policy
-                    </Link>
-                  </Stack>
+                          fontSize: { xs: 11, sm: 12 },
+                          '&:hover': {
+                            textDecoration: 'underline',
+                            color: 'primary.main',
+                          },
+                        }}
+                      >
+                        I have read and I agree to the <b>TERMS</b> and <b>PRIVACY POLICY</b>
+                      </Link>
+                    </Stack>
+                  </Divider>
                 </Stack>
               </Box>
             </Box>
@@ -364,31 +365,36 @@ const AdminLoginForm: React.FC = () => {
         </Grid>
       </Box>
 
-      {/* Privacy Policy Modal */}
+      {/* Dialog with memoized actions */}
       <Dialog
-        open={privacyModalOpen}
-        onClose={handleClosePrivacyModal}
-        title="Privacy Policy"
-        maxWidth={700}
-        hideCloseButton={true}
+        open={termsPrivacyModalOpen}
+        onClose={handleCloseTermsPrivacyModal}
         disableBackdropClick={true}
+        disableEscapeKeyDown={true}
+        title="Terms & Privacy Policy"
+        maxWidth={700}
+        hideCloseButton={false}
         content={
-          <PrivacyPolicyContent
-            onAccept={handleAcceptPrivacy}
-            onClose={handleClosePrivacyModal}
-            isChecked={isPrivacyChecked}
-            onCheckChange={handlePrivacyCheckChange}
+          <TermsAndPrivacyContent
+            onCheckboxChange={handleCheckboxChange}
+            isChecked={isCheckboxChecked}
           />
         }
-        actions={[
-          {
-            label: 'Accept & Continue',
-            onClick: handleAcceptPrivacy,
-            color: 'primary',
-            variant: 'contained',
-            disabled: !isPrivacyChecked,
-          },
-        ]}
+        actions={
+          <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'flex-end' }}>
+            <Button onClick={handleCloseTermsPrivacyModal} variant="outlined" color="secondary">
+              Close
+            </Button>
+            <Button
+              onClick={handleAcceptTermsPrivacy}
+              variant="contained"
+              color="primary"
+              disabled={!isCheckboxChecked}
+            >
+              I Agree
+            </Button>
+          </Box>
+        }
       />
     </>
   );

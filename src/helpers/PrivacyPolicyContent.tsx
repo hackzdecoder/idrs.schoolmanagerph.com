@@ -1,14 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  Box,
-  Checkbox,
-  CircularProgress,
-  FormControlLabel,
-  List,
-  ListItem,
-  Stack,
-  Typography,
-} from '@mui/material';
+import { Box, CircularProgress, List, ListItem, Stack, Typography } from '@mui/material';
 import useRouteApiSetup from 'hooks/useRouteApiSetup';
 
 // ============================================================================
@@ -20,13 +11,6 @@ interface CompanyInfo {
   copyright_name: string;
   publication_date: string;
   updated_at: string;
-}
-
-interface PrivacyPolicyContentProps {
-  onAccept?: () => void;
-  onClose?: () => void;
-  isChecked?: boolean;
-  onCheckChange?: (checked: boolean) => void;
 }
 
 // ============================================================================
@@ -60,15 +44,11 @@ const DEFAULT_COMPANY_INFO: CompanyInfo = {
 // Component
 // ============================================================================
 
-const PrivacyPolicyContent: React.FC<PrivacyPolicyContentProps> = ({
-  isChecked = false,
-  onCheckChange,
-}) => {
+const PrivacyPolicyContent: React.FC = () => {
   const { post } = useRouteApiSetup();
 
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo | null>(null);
   const [loading, setLoading] = useState(true);
-  const [accepted, setAccepted] = useState(isChecked);
   const hasFetched = useRef(false);
 
   // ==========================================================================
@@ -108,18 +88,6 @@ const PrivacyPolicyContent: React.FC<PrivacyPolicyContentProps> = ({
   }, []);
 
   // ==========================================================================
-  // Handlers
-  // ==========================================================================
-
-  const handleAcceptChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const checked = event.target.checked;
-    setAccepted(checked);
-    if (onCheckChange) {
-      onCheckChange(checked);
-    }
-  };
-
-  // ==========================================================================
   // Loading State
   // ==========================================================================
 
@@ -130,7 +98,7 @@ const PrivacyPolicyContent: React.FC<PrivacyPolicyContentProps> = ({
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          minHeight: '400px',
+          minHeight: '200px',
           width: '100%',
         }}
       >
@@ -154,7 +122,7 @@ const PrivacyPolicyContent: React.FC<PrivacyPolicyContentProps> = ({
     : formatDate(DEFAULT_COMPANY_INFO.publication_date);
 
   // ==========================================================================
-  // Main Render
+  // Main Render - NO CHECKBOX
   // ==========================================================================
 
   return (
@@ -741,32 +709,6 @@ const PrivacyPolicyContent: React.FC<PrivacyPolicyContentProps> = ({
           privacy rights, you may reach us through our Data Privacy Officer at
           dpo@schoolmanagerph.com.
         </Typography>
-      </Box>
-
-      {/* ==========================================================================
-          ACCEPTANCE CHECKBOX SECTION - ONLY CHECKBOX, NO BUTTON
-      ========================================================================== */}
-
-      <Box
-        sx={{
-          mt: 3,
-          pt: 2,
-          borderTop: '1px solid',
-          borderColor: 'divider',
-          bottom: 0,
-          bgcolor: 'background.paper',
-          pb: 1,
-        }}
-      >
-        <FormControlLabel
-          control={<Checkbox checked={accepted} onChange={handleAcceptChange} color="primary" />}
-          label={
-            <Typography variant="body2">
-              I have read, understood, and agree to the <strong>Privacy Policy</strong> and consent
-              to the collection and processing of my personal data as described above.
-            </Typography>
-          }
-        />
       </Box>
     </Stack>
   );
