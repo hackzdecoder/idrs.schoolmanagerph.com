@@ -52,7 +52,7 @@ interface StudentRecord {
   nick_name?: string | null;
   birth_date?: string | null;
   gender?: string | null;
-  esc_voucher_recipient?: boolean;
+  esc_voucher_recipient?: string | null;
   esc_number?: string | null;
   parent_first_name?: string | null;
   parent_surname?: string | null;
@@ -137,7 +137,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
     parent_surname: student?.parent_surname || '',
     parent_email: student?.parent_email || '',
     name_to_appear_on_id: student?.name_to_appear_on_id || '',
-    esc_voucher_recipient: student?.esc_voucher_recipient || false,
+    esc_voucher_recipient: student?.esc_voucher_recipient?.toLowerCase() === 'yes',
     esc_number: student?.esc_number || '',
     level: student?.level || '',
     section_course: student?.section_course || '',
@@ -187,7 +187,8 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
     if (editableSchoolData.lrn !== student?.lrn) {
       updateData.lrn = editableSchoolData.lrn;
     }
-    if (editableSchoolData.esc_voucher_recipient !== student?.esc_voucher_recipient) {
+    const studentEscValue = student?.esc_voucher_recipient?.toLowerCase() === 'yes';
+    if (editableSchoolData.esc_voucher_recipient !== studentEscValue) {
       updateData.esc_voucher_recipient = editableSchoolData.esc_voucher_recipient;
     }
     if (editableSchoolData.esc_number !== student?.esc_number) {

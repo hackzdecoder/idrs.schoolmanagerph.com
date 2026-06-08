@@ -61,7 +61,7 @@ interface StudentInformation {
   gender?: string | null;
   id_info_approval_date?: string | null;
   class_details_approval_date?: string | null;
-  esc_voucher_recipient?: boolean;
+  esc_voucher_recipient?: string | null;
   esc_number?: string | null;
   id_print_date?: string | null;
 }
@@ -97,7 +97,7 @@ interface StudentRecord {
   gender?: string | null;
   id_info_approval_date?: string | null;
   class_details_approval_date?: string | null;
-  esc_voucher_recipient?: boolean;
+  esc_voucher_recipient?: string | null;
   esc_number?: string | null;
   id_print_date?: string | null;
 }
@@ -353,6 +353,7 @@ const DashboardContent = () => {
           nick_name: student.nick_name || null,
           birth_date: student.birth_date || null,
           gender: student.gender || null,
+          esc_voucher_recipient: student.esc_voucher_recipient,
           esc_number: student.esc_number || null,
           id_info_approval_date: student.id_info_approval_date || null,
           class_details_approval_date: student.class_details_approval_date || null,
@@ -445,6 +446,7 @@ const DashboardContent = () => {
           nick_name: student.nick_name || null,
           birth_date: student.birth_date || null,
           gender: student.gender || null,
+          esc_voucher_recipient: student.esc_voucher_recipient,
           esc_number: student.esc_number || null,
           id_info_approval_date: student.id_info_approval_date || null,
           class_details_approval_date: student.class_details_approval_date || null,
@@ -1384,7 +1386,7 @@ const DashboardContent = () => {
                     DepEd ESC Grantee
                   </Typography>
                   <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
-                    {selectedStudent.esc_voucher_recipient ? 'Yes' : 'No'}
+                    {selectedStudent.esc_voucher_recipient?.toLowerCase() === 'yes' ? 'Yes' : 'No'}
                   </Typography>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
