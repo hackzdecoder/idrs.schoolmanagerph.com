@@ -1,5 +1,6 @@
+// app/src/components/auth/GuestGuard.tsx
 import { ReactNode, useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { Navigate } from 'react-router-dom';
 import paths from 'routes/paths';
 import PageLoader from 'components/loading/PageLoader';
 
@@ -8,30 +9,26 @@ interface GuestGuardProps {
 }
 
 const GuestGuard = ({ children }: GuestGuardProps) => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [checking, setChecking] = useState(true);
+  const [isChecking, setIsChecking] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('access_token');
     const userStr = localStorage.getItem('user');
 
-    console.log('GuestGuard - Checking:', {
-      token: !!token,
-      user: !!userStr,
-      path: location.pathname,
-    });
-
     if (token && userStr) {
-      console.log('GuestGuard - Already authenticated, redirecting to dashboard');
-      navigate(paths.root, { replace: true });
-      return;
+      setIsAuthenticated(true);
     }
+    setIsChecking(false);
+  }, []);
 
-    setChecking(false);
-  }, [navigate, location.pathname]);
+  if (isChecking) {
+    return <PageLoader />;
+  }
 
-  if (checking) return <PageLoader />;
+  if (isAuthenticated) {
+    return <Navigate to={paths.root} replace />;
+  }
 
   return <>{children}</>;
 };

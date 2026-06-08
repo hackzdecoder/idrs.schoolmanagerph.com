@@ -68,6 +68,13 @@ interface UserData {
   account_name?: string;
 }
 
+// Helper function to get student photo URL
+// Pattern: https://schoolmanagerph.com/idrs-school-ids/{school_code}/{student_id}_{surname}.jpg
+const getStudentPhotoUrl = (schoolCode: string, studentId: string, surname: string): string => {
+  if (!schoolCode || !studentId || !surname) return '';
+  return `https://schoolmanagerph.com/idrs-school-ids/${schoolCode}/${studentId}_${surname}.jpg`;
+};
+
 // Format middle initial on blur (initials only, preserve case, ensure period)
 const formatMiddleInitialOnBlur = (value: string): string => {
   if (!value) return '';
@@ -586,6 +593,12 @@ const ProfileContent = () => {
     }
   };
 
+  // Generate photo URL for the current student
+  const studentPhotoUrl =
+    profileData?.school_code && profileData?.student_id && profileData?.surname
+      ? getStudentPhotoUrl(profileData.school_code, profileData.student_id, profileData.surname)
+      : '';
+
   if (loading) return <PageLoader />;
 
   if (!userData || !profileData) {
@@ -642,6 +655,7 @@ const ProfileContent = () => {
             <Grid size={{ xs: 12 }}>
               <Stack sx={{ alignItems: 'center', gap: 1 }}>
                 <Avatar
+                  src={studentPhotoUrl}
                   sx={{
                     width: { xs: 70, sm: 80, md: 90 },
                     height: { xs: 70, sm: 80, md: 90 },

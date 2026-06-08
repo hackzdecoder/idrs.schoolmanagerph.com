@@ -149,6 +149,13 @@ interface Statistics {
   totalReprintedIds: number;
 }
 
+// Helper function to get student photo URL
+// Pattern: https://schoolmanagerph.com/idrs-school-ids/{school_code}/{student_id}_{surname}.jpg
+const getStudentPhotoUrl = (schoolCode: string, studentId: string, surname: string): string => {
+  if (!schoolCode || !studentId || !surname) return '';
+  return `https://schoolmanagerph.com/idrs-school-ids/${schoolCode}/${studentId}_${surname}.jpg`;
+};
+
 /**
  * Capitalizes first letter of a string without forcing the rest to lowercase
  * Use this for proper nouns and phrases like "Section A"
@@ -415,7 +422,6 @@ const DashboardContent = () => {
           parent_full_name: student.parent_full_name,
           parent_email: student.parent_email,
           emergency_contact: student.emergency_contact,
-          // ✅ ADDED: Missing field mappings for modal display
           nick_name: student.nick_name || null,
           birth_date: student.birth_date || null,
           gender: student.gender || null,
@@ -512,7 +518,6 @@ const DashboardContent = () => {
           parent_full_name: student.parent_full_name,
           parent_email: student.parent_email,
           emergency_contact: student.emergency_contact,
-          // ✅ ADDED: Missing field mappings for modal display
           nick_name: student.nick_name || null,
           birth_date: student.birth_date || null,
           gender: student.gender || null,
@@ -789,17 +794,29 @@ const DashboardContent = () => {
     {
       field: 'name_to_appear_on_id',
       headerName: 'Student Name',
-      width: 200,
-      renderCell: (params: GridRenderCellParams) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Avatar sx={{ width: 32, height: 32, bgcolor: '#2563eb', fontSize: '0.875rem' }}>
-            {params.row.name_to_appear_on_id?.charAt(0) || 'S'}
-          </Avatar>
-          <Typography variant="body2" sx={{ fontWeight: 500 }}>
-            {preserveCase(params.row.name_to_appear_on_id)}
-          </Typography>
-        </Box>
-      ),
+      width: 220,
+      renderCell: (params: GridRenderCellParams) => {
+        const student = params.row as StudentRecord;
+        const photoUrl = getStudentPhotoUrl(
+          student.school_code,
+          student.student_id,
+          student.last_name,
+        );
+
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Avatar
+              src={photoUrl}
+              sx={{ width: 32, height: 32, bgcolor: '#2563eb', fontSize: '0.875rem' }}
+            >
+              {student.name_to_appear_on_id?.charAt(0) || 'S'}
+            </Avatar>
+            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+              {preserveCase(student.name_to_appear_on_id)}
+            </Typography>
+          </Box>
+        );
+      },
     },
     {
       field: 'level',
@@ -833,7 +850,7 @@ const DashboardContent = () => {
     {
       field: 'id_info_status',
       headerName: 'ID Info Status',
-      width: 130,
+      width: 115,
       renderCell: (params: GridRenderCellParams) => (
         <Chip
           label={formatStatus(params.row.id_info_status)}
@@ -846,7 +863,7 @@ const DashboardContent = () => {
     {
       field: 'id_info_approval_date',
       headerName: 'ID Info Approval Date',
-      width: 160,
+      width: 165,
       renderCell: (params: GridRenderCellParams) => {
         if (!params.row.id_info_approval_date) return <Typography variant="body2">—</Typography>;
         const date = new Date(params.row.id_info_approval_date);
@@ -860,7 +877,7 @@ const DashboardContent = () => {
     {
       field: 'class_details_status',
       headerName: 'Class Details Status',
-      width: 160,
+      width: 150,
       renderCell: (params: GridRenderCellParams) => (
         <Chip
           label={formatStatus(params.row.class_details_status)}
@@ -873,7 +890,7 @@ const DashboardContent = () => {
     {
       field: 'class_details_approval_date',
       headerName: 'Class Details Approval Date',
-      width: 180,
+      width: 205,
       renderCell: (params: GridRenderCellParams) => {
         if (!params.row.class_details_approval_date)
           return <Typography variant="body2">—</Typography>;
@@ -888,7 +905,7 @@ const DashboardContent = () => {
     {
       field: 'id_print_status',
       headerName: 'ID Print Status',
-      width: 140,
+      width: 115,
       renderCell: (params: GridRenderCellParams) => (
         <Chip
           label={formatStatus(params.row.id_print_status)}
@@ -901,7 +918,7 @@ const DashboardContent = () => {
     {
       field: 'id_print_date',
       headerName: 'ID Print Date',
-      width: 140,
+      width: 200,
       renderCell: (params: GridRenderCellParams) => {
         if (!params.row.id_print_date) return <Typography variant="body2">—</Typography>;
         const date = new Date(params.row.id_print_date);
@@ -1292,7 +1309,11 @@ const DashboardContent = () => {
           },
         ]}
         content={
-          <Stack spacing={2.5} sx={{ mt: 1, maxHeight: '70vh', overflowY: 'auto', pr: 1 }}>
+          <Stack
+            spacing={2.5}
+            direction="column"
+            sx={{ mt: 1, maxHeight: '70vh', overflowY: 'auto', pr: 1 }}
+          >
             <FormControl fullWidth size="small">
               <InputLabel>School Code</InputLabel>
               <Select
@@ -1531,9 +1552,14 @@ const DashboardContent = () => {
         disableBackdropClick={true}
         content={
           selectedStudent && (
-            <Stack spacing={3}>
+            <Stack spacing={3} direction="column">
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Avatar
+                  src={getStudentPhotoUrl(
+                    selectedStudent.school_code,
+                    selectedStudent.student_id,
+                    selectedStudent.last_name,
+                  )}
                   sx={{
                     width: { xs: 64, sm: 80 },
                     height: { xs: 64, sm: 80 },
@@ -1707,7 +1733,7 @@ const DashboardContent = () => {
                     variant="caption"
                     sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
                   >
-                    ESC Voucher
+                    DepEd ESC Grantee
                   </Typography>
                   <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
                     {selectedStudent.esc_voucher_recipient ? 'Yes' : 'No'}
@@ -1750,7 +1776,8 @@ const DashboardContent = () => {
                     C. ID Application Status
                   </Typography>
                 </Grid>
-                <Grid size={{ xs: 12, sm: 6 }}>
+
+                <Grid size={{ xs: 12, sm: 12 }}>
                   <Typography
                     variant="caption"
                     sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}
@@ -1761,6 +1788,8 @@ const DashboardContent = () => {
                     {preserveCase(selectedStudent.name_to_appear_on_id)}
                   </Typography>
                 </Grid>
+
+                {/* ✅ ID Info Status aligned with ID Info Approval Date */}
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <Typography
                     variant="caption"
@@ -1795,6 +1824,8 @@ const DashboardContent = () => {
                       : '—'}
                   </Typography>
                 </Grid>
+
+                {/* ✅ Class Details Status aligned with Class Details Approval Date */}
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <Typography
                     variant="caption"
@@ -1829,6 +1860,8 @@ const DashboardContent = () => {
                       : '—'}
                   </Typography>
                 </Grid>
+
+                {/* ✅ ID Print Status aligned with ID Print Date */}
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <Typography
                     variant="caption"

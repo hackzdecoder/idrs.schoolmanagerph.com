@@ -39,7 +39,6 @@ const ProfileMenu = () => {
   const profileFetchedRef = useRef(false);
 
   useEffect(() => {
-    // Prevent multiple calls
     if (fetchedRef.current) return;
     fetchedRef.current = true;
 
@@ -61,9 +60,8 @@ const ProfileMenu = () => {
     };
 
     loadUserData();
-  }, []); // Empty dependency array - only runs once
+  }, []);
 
-  // Separate effect for fetching profile data - only runs when userData is set
   useEffect(() => {
     if (!userData || profileFetchedRef.current) return;
 
@@ -87,7 +85,7 @@ const ProfileMenu = () => {
     };
 
     fetchProfile();
-  }, [userData, get]); // Only runs when userData changes
+  }, [userData, get]);
 
   const open = Boolean(anchorEl);
   const handleClick = (event: React.MouseEvent<HTMLElement>) => setAnchorEl(event.currentTarget);
@@ -209,7 +207,6 @@ const ProfileMenu = () => {
                 </Typography>
               )}
             </Stack>
-            {/* Changed: Show Student ID Number instead of email */}
             {studentId && (
               <Typography
                 variant="caption"
@@ -224,24 +221,68 @@ const ProfileMenu = () => {
         <Divider />
 
         <Box sx={{ py: 1 }}>
-          {/* Changed: Account Settings → Student Registration Details */}
-          <MenuItem
-            onClick={handleClose}
-            component={Link}
-            href={paths.profile}
-            underline="none"
-            sx={{ gap: 1 }}
-          >
-            <ListItemIcon
-              sx={{ [`&.${listItemIconClasses.root}`]: { minWidth: 'unset !important' } }}
+          {/* ✅ Dynamic menu item based on user role */}
+          {userData?.role === 'Admin' && (
+            <MenuItem
+              onClick={handleClose}
+              component={Link}
+              href={paths.management}
+              underline="none"
+              sx={{ gap: 1 }}
             >
-              <IconifyIcon
-                icon="material-symbols:manage-accounts-outline-rounded"
-                sx={{ color: 'text.secondary' }}
-              />
-            </ListItemIcon>
-            Student Registration Details
-          </MenuItem>
+              <ListItemIcon
+                sx={{ [`&.${listItemIconClasses.root}`]: { minWidth: 'unset !important' } }}
+              >
+                <IconifyIcon
+                  icon="material-symbols:manage-accounts-outline-rounded"
+                  sx={{ color: 'text.secondary' }}
+                />
+              </ListItemIcon>
+              Enrollment Approval
+            </MenuItem>
+          )}
+
+          {userData?.role === 'Super Admin' && (
+            <MenuItem
+              onClick={handleClose}
+              component={Link}
+              href={paths.profile}
+              underline="none"
+              sx={{ gap: 1 }}
+            >
+              <ListItemIcon
+                sx={{ [`&.${listItemIconClasses.root}`]: { minWidth: 'unset !important' } }}
+              >
+                <IconifyIcon
+                  icon="material-symbols:account-circle-outline"
+                  sx={{ color: 'text.secondary' }}
+                />
+              </ListItemIcon>
+              Profile
+            </MenuItem>
+          )}
+
+          {userData?.role === 'Student' && (
+            <MenuItem
+              onClick={handleClose}
+              component={Link}
+              href={paths.student_profile}
+              underline="none"
+              sx={{ gap: 1 }}
+            >
+              <ListItemIcon
+                sx={{ [`&.${listItemIconClasses.root}`]: { minWidth: 'unset !important' } }}
+              >
+                <IconifyIcon
+                  icon="material-symbols:person-outline"
+                  sx={{ color: 'text.secondary' }}
+                />
+              </ListItemIcon>
+              Enrollment Approval
+            </MenuItem>
+          )}
+
+          {/* Help Center - common for all roles */}
           <MenuItem
             onClick={handleClose}
             component={Link}

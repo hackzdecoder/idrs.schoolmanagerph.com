@@ -1,12 +1,24 @@
 import React from 'react';
 import { useState } from 'react';
 import { Icon } from '@iconify/react';
-import { Alert, Avatar, Box, Button, Divider, Stack, TextField, Typography } from '@mui/material';
+import {
+  Alert,
+  Avatar,
+  Box,
+  Button,
+  Divider,
+  Link,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material';
 import Grid from '@mui/material/Grid';
 import useRouteApiSetup from 'hooks/useRouteApiSetup';
 import paths from 'routes/paths';
 import PasswordTextField from 'components/common/PasswordTextField';
+import { Dialog } from 'components/dialogs/Dialog';
 import PageLoader from 'components/loading/PageLoader';
+import TermsAndPrivacyContent from '../../../helpers/TermsAndPrivacyContent';
 
 // ============================================================================
 // Types & Interfaces
@@ -61,6 +73,11 @@ const AdminLoginForm: React.FC = () => {
     password: false,
   });
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Combined Terms & Privacy Modal State
+  const [termsPrivacyModalOpen, setTermsPrivacyModalOpen] = useState(false);
+  const [termsPrivacyAccepted, setTermsPrivacyAccepted] = useState(false);
+  const [isCheckboxChecked, setIsCheckboxChecked] = useState(false);
 
   // ==========================================================================
   // Validation Helpers
@@ -121,6 +138,11 @@ const AdminLoginForm: React.FC = () => {
 
     if (!validateForm()) return;
 
+    if (!termsPrivacyAccepted) {
+      setSubmitError('You must accept the Terms and Privacy Policy before logging in.');
+      return;
+    }
+
     setSubmitError(null);
 
     try {
@@ -149,6 +171,34 @@ const AdminLoginForm: React.FC = () => {
   };
 
   // ==========================================================================
+  // Modal Handlers
+  // ==========================================================================
+
+  const handleOpenTermsPrivacyModal = () => {
+    setIsCheckboxChecked(false);
+    setTermsPrivacyModalOpen(true);
+  };
+
+  const handleCloseTermsPrivacyModal = () => {
+    setTermsPrivacyModalOpen(false);
+    setIsCheckboxChecked(false);
+  };
+
+  const handleAcceptTermsPrivacy = () => {
+    console.log('Accept clicked, isCheckboxChecked:', isCheckboxChecked);
+    if (isCheckboxChecked) {
+      setTermsPrivacyAccepted(true);
+      setTermsPrivacyModalOpen(false);
+      setIsCheckboxChecked(false);
+    }
+  };
+
+  const handleCheckboxChange = (checked: boolean) => {
+    console.log('Checkbox changed in parent:', checked);
+    setIsCheckboxChecked(checked);
+  };
+
+  // ==========================================================================
   // Render Helpers
   // ==========================================================================
 
@@ -170,131 +220,181 @@ const AdminLoginForm: React.FC = () => {
   // ==========================================================================
 
   return (
-    <Box
-      sx={{
-        minHeight: { md: '100vh' },
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        py: { xs: 2, sm: 3, md: 0 },
-        px: { xs: 2, sm: 3 },
-        // Background image only on desktop (md and up)
-        backgroundImage: {
-          xs: 'none',
-          md: 'url("/assets/images/admin-login-bg.jpg")',
-        },
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-        backgroundColor: { xs: '#f5f5f5', md: 'transparent' },
-      }}
-    >
-      <Grid
-        container
+    <>
+      <Box
         sx={{
-          maxWidth: '35rem',
-          width: '100%',
-          mx: 'auto',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '100vh',
+          py: { xs: 2, sm: 3, md: 0 },
+          px: { xs: 2, sm: 3 },
+          backgroundImage: {
+            xs: 'none',
+            md: 'url("/assets/images/admin-login-bg.jpg")',
+          },
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          backgroundColor: { xs: '#f5f5f5', md: 'transparent' },
         }}
       >
-        <Grid size={12}>
-          <Box
-            sx={{
-              bgcolor: 'background.paper',
-              borderRadius: { xs: 3, sm: 4 },
-              boxShadow: { xs: 0, sm: 1 },
-              p: { xs: 2.5, sm: 4, md: 5 },
-            }}
-          >
-            {/* Header Section */}
-            <Stack
-              direction="column"
-              spacing={1.5}
+        <Grid
+          container
+          sx={{
+            maxWidth: '35rem',
+            width: '100%',
+            mx: 'auto',
+          }}
+        >
+          <Grid size={12}>
+            <Box
               sx={{
-                mb: { xs: 2, sm: 3 },
-                alignItems: 'center',
-                textAlign: 'center',
+                bgcolor: 'background.paper',
+                borderRadius: { xs: 3, sm: 4 },
+                p: { xs: 2.5, sm: 4, md: 5 },
               }}
             >
-              <Avatar
+              <Stack
+                direction="column"
+                spacing={1.5}
                 sx={{
-                  width: { xs: 56, sm: 64, md: 80 },
-                  height: { xs: 56, sm: 64, md: 80 },
-                  bgcolor: '#2563eb',
+                  mb: { xs: 2, sm: 3 },
+                  alignItems: 'center',
+                  textAlign: 'center',
                 }}
               >
-                <Icon icon="mdi:shield-account" width={32} height={32} />
-              </Avatar>
-
-              <Typography
-                variant="h4"
-                sx={{ fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' } }}
-              >
-                ID Registration Portal
-              </Typography>
-
-              <Typography
-                variant="subtitle1"
-                sx={{ color: 'text.secondary', fontSize: { xs: 12, sm: 13, md: 14 } }}
-              >
-                Please provide your valid username and password
-              </Typography>
-            </Stack>
-
-            <Divider sx={{ mb: { xs: 2, sm: 3 } }} />
-
-            {/* Login Form */}
-            <Box component="form" noValidate onSubmit={handleSubmit}>
-              <Stack spacing={2.5} direction="column">
-                {renderErrorAlert()}
-
-                <TextField
-                  fullWidth
-                  size="medium"
-                  id="username"
-                  label="Username"
-                  placeholder="Enter your username"
-                  value={formData.username}
-                  onChange={handleChange('username')}
-                  onBlur={handleBlur('username')}
-                  error={touched.username && !!errors.username}
-                  helperText={touched.username && errors.username}
-                  disabled={apiLoading}
-                  autoComplete="username"
-                />
-
-                <PasswordTextField
-                  fullWidth
-                  size="medium"
-                  id="password"
-                  label="Password"
-                  placeholder="Enter your password"
-                  value={formData.password}
-                  onChange={handleChange('password')}
-                  onBlur={handleBlur('password')}
-                  error={touched.password && !!errors.password}
-                  helperText={touched.password && errors.password}
-                  disabled={apiLoading}
-                  autoComplete="current-password"
-                />
-
-                <Button
-                  fullWidth
-                  type="submit"
-                  size="large"
-                  variant="contained"
-                  color="primary"
-                  disabled={apiLoading}
-                  sx={{ py: { xs: 1.2, sm: 1.5 }, mt: { xs: 0.5, sm: 1 } }}
+                <Avatar
+                  sx={{
+                    width: { xs: 56, sm: 64, md: 80 },
+                    height: { xs: 56, sm: 64, md: 80 },
+                    bgcolor: '#2563eb',
+                  }}
                 >
-                  {apiLoading ? 'Logging in...' : 'Login'}
-                </Button>
+                  <Icon icon="mdi:shield-account" width={32} height={32} />
+                </Avatar>
+
+                <Typography
+                  variant="h4"
+                  sx={{ fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' } }}
+                >
+                  ID Registration Portal
+                </Typography>
+
+                <Typography
+                  variant="subtitle1"
+                  sx={{ color: 'text.secondary', fontSize: { xs: 12, sm: 13, md: 14 } }}
+                >
+                  Please provide your valid username and password
+                </Typography>
               </Stack>
+
+              <Divider sx={{ mb: { xs: 2, sm: 3 } }} />
+
+              <Box component="form" noValidate onSubmit={handleSubmit}>
+                <Stack spacing={2.5} direction="column">
+                  {renderErrorAlert()}
+
+                  <TextField
+                    fullWidth
+                    size="medium"
+                    id="username"
+                    label="Username"
+                    placeholder="Enter your username"
+                    value={formData.username}
+                    onChange={handleChange('username')}
+                    onBlur={handleBlur('username')}
+                    error={touched.username && !!errors.username}
+                    helperText={touched.username && errors.username}
+                    disabled={apiLoading}
+                    autoComplete="username"
+                  />
+
+                  <PasswordTextField
+                    fullWidth
+                    size="medium"
+                    id="password"
+                    label="Password"
+                    placeholder="Enter your password"
+                    value={formData.password}
+                    onChange={handleChange('password')}
+                    onBlur={handleBlur('password')}
+                    error={touched.password && !!errors.password}
+                    helperText={touched.password && errors.password}
+                    disabled={apiLoading}
+                    autoComplete="current-password"
+                  />
+
+                  <Button
+                    fullWidth
+                    type="submit"
+                    size="large"
+                    variant="contained"
+                    color="primary"
+                    disabled={apiLoading || !termsPrivacyAccepted}
+                    sx={{ py: { xs: 1.2, sm: 1.5 }, mt: { xs: 0.5, sm: 1 } }}
+                  >
+                    {apiLoading ? 'Logging in...' : 'Login'}
+                  </Button>
+
+                  <Divider sx={{ my: 1 }}>
+                    <Stack direction="row" spacing={2} justifyContent="center">
+                      <Link
+                        component="button"
+                        type="button"
+                        variant="body2"
+                        onClick={handleOpenTermsPrivacyModal}
+                        sx={{
+                          cursor: 'pointer',
+                          fontSize: { xs: 11, sm: 12 },
+                          '&:hover': {
+                            color: 'primary.main',
+                          },
+                        }}
+                      >
+                        I have read and I agree to the <b>TERMS</b> and <b>PRIVACY POLICY</b>
+                      </Link>
+                    </Stack>
+                  </Divider>
+                </Stack>
+              </Box>
             </Box>
-          </Box>
+          </Grid>
         </Grid>
-      </Grid>
-    </Box>
+      </Box>
+
+      {/* Dialog with memoized actions */}
+      <Dialog
+        open={termsPrivacyModalOpen}
+        onClose={handleCloseTermsPrivacyModal}
+        disableBackdropClick={true}
+        disableEscapeKeyDown={true}
+        title="Terms & Privacy Policy"
+        maxWidth={700}
+        hideCloseButton={false}
+        content={
+          <TermsAndPrivacyContent
+            onCheckboxChange={handleCheckboxChange}
+            isChecked={isCheckboxChecked}
+          />
+        }
+        actions={
+          <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'flex-end' }}>
+            <Button onClick={handleCloseTermsPrivacyModal} variant="outlined" color="secondary">
+              Close
+            </Button>
+            <Button
+              onClick={handleAcceptTermsPrivacy}
+              variant="contained"
+              color="primary"
+              disabled={!isCheckboxChecked}
+            >
+              I Agree
+            </Button>
+          </Box>
+        }
+      />
+    </>
   );
 };
 

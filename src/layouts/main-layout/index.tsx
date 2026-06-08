@@ -23,8 +23,17 @@ const MainLayout = ({ children }: PropsWithChildren) => {
   };
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', zIndex: 1, position: 'relative' }}>
+    <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <Box
+        sx={{
+          display: 'flex',
+          zIndex: 1,
+          position: 'relative',
+          flex: 1,
+          overflow: 'auto',
+          marginBottom: 10,
+        }}
+      >
         <NavProvider>
           <AppBar />
 
@@ -54,31 +63,29 @@ const MainLayout = ({ children }: PropsWithChildren) => {
             sx={{
               flexGrow: 1,
               p: 0,
-              minHeight: '100vh',
               width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` },
               display: 'flex',
               flexDirection: 'column',
               ml: { md: `${mainDrawerWidth.collapsed}px`, lg: 0 },
+              pb: 8, // Add padding bottom to prevent content from hiding behind fixed footer
             }}
           >
             <Toolbar variant="appbar" />
 
             <Box sx={{ flex: 1 }}>
               <Box
-                sx={[
-                  {
-                    height: 1,
-                    bgcolor: 'background.default',
-                  },
-                ]}
+                sx={{
+                  height: 1,
+                  bgcolor: 'background.default',
+                }}
               >
                 {children}
               </Box>
             </Box>
-            <Footer />
           </Box>
         </NavProvider>
       </Box>
+      <Footer />
     </Box>
   );
 };
