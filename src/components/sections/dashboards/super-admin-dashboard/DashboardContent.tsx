@@ -966,7 +966,17 @@ const DashboardContent = () => {
                     {statistics.total}
                   </Typography>
                 </Box>
-                <Box sx={{ bgcolor: '#e0e7ff', p: 1, borderRadius: 2 }}>
+                <Box
+                  sx={{
+                    bgcolor: '#e0e7ff',
+                    width: 48,
+                    height: 48,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                  }}
+                >
                   <IconifyIcon icon="mdi:account-group" fontSize={24} color="#2563eb" />
                 </Box>
               </Stack>
@@ -999,7 +1009,17 @@ const DashboardContent = () => {
                     {statistics.approvedIdInfo}
                   </Typography>
                 </Box>
-                <Box sx={{ bgcolor: '#d1fae5', p: 1, borderRadius: 2 }}>
+                <Box
+                  sx={{
+                    bgcolor: '#d1fae5',
+                    width: 48,
+                    height: 48,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                  }}
+                >
                   <IconifyIcon icon="mdi:check-circle" fontSize={24} color="#10b981" />
                 </Box>
               </Stack>
@@ -1032,7 +1052,17 @@ const DashboardContent = () => {
                     {statistics.pendingIdInfo}
                   </Typography>
                 </Box>
-                <Box sx={{ bgcolor: '#fef3c7', p: 1, borderRadius: 2 }}>
+                <Box
+                  sx={{
+                    bgcolor: '#fef3c7',
+                    width: 48,
+                    height: 48,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                  }}
+                >
                   <IconifyIcon icon="mdi:clock-outline" fontSize={24} color="#f59e0b" />
                 </Box>
               </Stack>
@@ -1065,7 +1095,17 @@ const DashboardContent = () => {
                     {statistics.approvedClassDetails}
                   </Typography>
                 </Box>
-                <Box sx={{ bgcolor: '#d1fae5', p: 1, borderRadius: 2 }}>
+                <Box
+                  sx={{
+                    bgcolor: '#d1fae5',
+                    width: 48,
+                    height: 48,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                  }}
+                >
                   <IconifyIcon icon="mdi:check-circle" fontSize={24} color="#10b981" />
                 </Box>
               </Stack>
@@ -1101,7 +1141,17 @@ const DashboardContent = () => {
                     {statistics.pendingClassDetails}
                   </Typography>
                 </Box>
-                <Box sx={{ bgcolor: '#fef3c7', p: 1, borderRadius: 2 }}>
+                <Box
+                  sx={{
+                    bgcolor: '#fef3c7',
+                    width: 48,
+                    height: 48,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                  }}
+                >
                   <IconifyIcon icon="mdi:clock-outline" fontSize={24} color="#f59e0b" />
                 </Box>
               </Stack>
@@ -1134,7 +1184,17 @@ const DashboardContent = () => {
                     {statistics.printedIds}
                   </Typography>
                 </Box>
-                <Box sx={{ bgcolor: '#d1fae5', p: 1, borderRadius: 2 }}>
+                <Box
+                  sx={{
+                    bgcolor: '#d1fae5',
+                    width: 48,
+                    height: 48,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                  }}
+                >
                   <IconifyIcon icon="mdi:printer" fontSize={24} color="#10b981" />
                 </Box>
               </Stack>
@@ -1167,7 +1227,17 @@ const DashboardContent = () => {
                     {statistics.totalPendingIds}
                   </Typography>
                 </Box>
-                <Box sx={{ bgcolor: '#fef3c7', p: 1, borderRadius: 2 }}>
+                <Box
+                  sx={{
+                    bgcolor: '#fef3c7',
+                    width: 48,
+                    height: 48,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                  }}
+                >
                   <IconifyIcon icon="mdi:printer-alert" fontSize={24} color="#f59e0b" />
                 </Box>
               </Stack>
@@ -1200,7 +1270,17 @@ const DashboardContent = () => {
                     {statistics.totalReprintedIds}
                   </Typography>
                 </Box>
-                <Box sx={{ bgcolor: '#ede9fe', p: 1, borderRadius: 2 }}>
+                <Box
+                  sx={{
+                    bgcolor: '#ede9fe',
+                    width: 48,
+                    height: 48,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                  }}
+                >
                   <IconifyIcon icon="mdi:refresh" fontSize={24} color="#8b5cf6" />
                 </Box>
               </Stack>

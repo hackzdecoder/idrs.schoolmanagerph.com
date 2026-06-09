@@ -721,7 +721,7 @@ const DashboardContent = () => {
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             variant="outlined"
-            sx={{ borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
+            sx={{ borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', height: '100%' }}
           >
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Stack direction="row" alignItems="center" justifyContent="space-between">
@@ -743,7 +743,17 @@ const DashboardContent = () => {
                     {statistics.total_students}
                   </Typography>
                 </Box>
-                <Box sx={{ bgcolor: '#e0e7ff', p: 1, borderRadius: 2 }}>
+                <Box
+                  sx={{
+                    bgcolor: '#e0e7ff',
+                    width: 48,
+                    height: 48,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                  }}
+                >
                   <IconifyIcon icon="mdi:account-group" fontSize={24} color="#2563eb" />
                 </Box>
               </Stack>
@@ -755,7 +765,7 @@ const DashboardContent = () => {
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             variant="outlined"
-            sx={{ borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
+            sx={{ borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', height: '100%' }}
           >
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Stack direction="row" alignItems="center" justifyContent="space-between">
@@ -777,7 +787,17 @@ const DashboardContent = () => {
                     {statistics.approved_id_info_count}
                   </Typography>
                 </Box>
-                <Box sx={{ bgcolor: '#d1fae5', p: 1, borderRadius: 2 }}>
+                <Box
+                  sx={{
+                    bgcolor: '#d1fae5',
+                    width: 48,
+                    height: 48,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                  }}
+                >
                   <IconifyIcon icon="mdi:check-circle" fontSize={24} color="#10b981" />
                 </Box>
               </Stack>
@@ -789,7 +809,7 @@ const DashboardContent = () => {
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             variant="outlined"
-            sx={{ borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
+            sx={{ borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', height: '100%' }}
           >
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Stack direction="row" alignItems="center" justifyContent="space-between">
@@ -811,7 +831,17 @@ const DashboardContent = () => {
                     {statistics.pending_id_info_count}
                   </Typography>
                 </Box>
-                <Box sx={{ bgcolor: '#fef3c7', p: 1, borderRadius: 2 }}>
+                <Box
+                  sx={{
+                    bgcolor: '#fef3c7',
+                    width: 48,
+                    height: 48,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                  }}
+                >
                   <IconifyIcon icon="mdi:clock-outline" fontSize={24} color="#f59e0b" />
                 </Box>
               </Stack>
@@ -823,7 +853,7 @@ const DashboardContent = () => {
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             variant="outlined"
-            sx={{ borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
+            sx={{ borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', height: '100%' }}
           >
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Stack direction="row" alignItems="center" justifyContent="space-between">
@@ -845,7 +875,17 @@ const DashboardContent = () => {
                     {statistics.approved_class_details_count}
                   </Typography>
                 </Box>
-                <Box sx={{ bgcolor: '#d1fae5', p: 1, borderRadius: 2 }}>
+                <Box
+                  sx={{
+                    bgcolor: '#d1fae5',
+                    width: 48,
+                    height: 48,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                  }}
+                >
                   <IconifyIcon icon="mdi:check-circle" fontSize={24} color="#10b981" />
                 </Box>
               </Stack>
@@ -863,6 +903,7 @@ const DashboardContent = () => {
             sx={{
               borderRadius: 3,
               boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+              height: '100%',
               cursor: 'pointer',
               transition: 'all 0.2s ease',
               '&:hover': {
@@ -895,7 +936,17 @@ const DashboardContent = () => {
                     {statistics.pending_class_details_count}
                   </Typography>
                 </Box>
-                <Box sx={{ bgcolor: '#fef3c7', p: 1, borderRadius: 2 }}>
+                <Box
+                  sx={{
+                    bgcolor: '#fef3c7',
+                    width: 48,
+                    height: 48,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                  }}
+                >
                   <IconifyIcon icon="mdi:clock-outline" fontSize={24} color="#f59e0b" />
                 </Box>
               </Stack>
@@ -907,7 +958,7 @@ const DashboardContent = () => {
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             variant="outlined"
-            sx={{ borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
+            sx={{ borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', height: '100%' }}
           >
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Stack direction="row" alignItems="center" justifyContent="space-between">
@@ -929,7 +980,17 @@ const DashboardContent = () => {
                     {statistics.printed_ids_count}
                   </Typography>
                 </Box>
-                <Box sx={{ bgcolor: '#d1fae5', p: 1, borderRadius: 2 }}>
+                <Box
+                  sx={{
+                    bgcolor: '#d1fae5',
+                    width: 48,
+                    height: 48,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                  }}
+                >
                   <IconifyIcon icon="mdi:printer" fontSize={24} color="#10b981" />
                 </Box>
               </Stack>
@@ -941,7 +1002,7 @@ const DashboardContent = () => {
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             variant="outlined"
-            sx={{ borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
+            sx={{ borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', height: '100%' }}
           >
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Stack direction="row" alignItems="center" justifyContent="space-between">
@@ -963,7 +1024,17 @@ const DashboardContent = () => {
                     {statistics.total_pending_ids_count}
                   </Typography>
                 </Box>
-                <Box sx={{ bgcolor: '#fef3c7', p: 1, borderRadius: 2 }}>
+                <Box
+                  sx={{
+                    bgcolor: '#fef3c7',
+                    width: 48,
+                    height: 48,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                  }}
+                >
                   <IconifyIcon icon="mdi:printer-alert" fontSize={24} color="#f59e0b" />
                 </Box>
               </Stack>
@@ -975,7 +1046,7 @@ const DashboardContent = () => {
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card
             variant="outlined"
-            sx={{ borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
+            sx={{ borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', height: '100%' }}
           >
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Stack direction="row" alignItems="center" justifyContent="space-between">
@@ -997,7 +1068,17 @@ const DashboardContent = () => {
                     {statistics.total_reprinted_ids_count}
                   </Typography>
                 </Box>
-                <Box sx={{ bgcolor: '#ede9fe', p: 1, borderRadius: 2 }}>
+                <Box
+                  sx={{
+                    bgcolor: '#ede9fe',
+                    width: 48,
+                    height: 48,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                  }}
+                >
                   <IconifyIcon icon="mdi:refresh" fontSize={24} color="#8b5cf6" />
                 </Box>
               </Stack>
