@@ -672,7 +672,22 @@ const ProfileContent = () => {
                 <Box sx={{ textAlign: 'left' }}>
                   <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: 'wrap' }}>
                     <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                      {profileData.full_name}
+                      {(() => {
+                        const firstName = profileData.first_name || '';
+                        const middleInitial = profileData.middle_initial || '';
+                        // Remove all periods from middle initial, then add one
+                        const cleanMiddle = middleInitial.replace(/\./g, '');
+                        const formattedMiddle = cleanMiddle ? cleanMiddle + '.' : '';
+                        const lastName = profileData.surname || '';
+                        const suffix = profileData.suffix_name || '';
+
+                        let fullName = firstName;
+                        if (formattedMiddle) fullName += ' ' + formattedMiddle;
+                        if (lastName) fullName += ' ' + lastName;
+                        if (suffix) fullName += ' ' + suffix;
+
+                        return fullName.trim();
+                      })()}
                     </Typography>
                   </Stack>
                   {profileData.student_id && (
