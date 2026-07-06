@@ -138,7 +138,7 @@ const getStatusColor = (status: string) => {
 // Helper function to get student photo URL
 const getStudentPhotoUrl = (schoolCode: string, studentId: string, surname: string): string => {
   if (!schoolCode || !studentId || !surname) return '';
-  return `https://schoolmanagerph.com/idrs-school-ids/${schoolCode}/${studentId}_${surname}.jpg`;
+  return `https://schoolmanagerph.com/idrs-school-ids/${schoolCode}/${studentId}_${surname}.jpg?t=${Date.now()}`;
 };
 
 const ProfileContent = () => {

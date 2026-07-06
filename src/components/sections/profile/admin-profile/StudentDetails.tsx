@@ -60,6 +60,7 @@ interface StudentRecord {
   emergency_contact_person?: string | null;
   emergency_contact_number?: string | null;
   surname?: string;
+  student_picture?: string | null;
 }
 
 interface StudentDetailsProps {
@@ -71,22 +72,22 @@ interface StudentDetailsProps {
 // Helper function to get student photo URL
 const getStudentPhotoUrl = (schoolCode: string, studentId: string, surname: string): string => {
   if (!schoolCode || !studentId || !surname) return '';
-  return `https://schoolmanagerph.com/idrs-school-ids/${schoolCode}/${studentId}_${surname}.jpg`;
+  return `https://schoolmanagerph.com/idrs-school-ids/${schoolCode}/${studentId}_${surname}.jpg?t=${Date.now()}`;
 };
 
-const formatDate = (dateString: string | null | undefined): string => {
-  if (!dateString) return '';
-  if (dateString.includes('T')) {
-    const date = new Date(dateString);
-    if (!isNaN(date.getTime())) {
-      const year = date.getUTCFullYear();
-      const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-      const day = String(date.getUTCDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    }
-  }
-  return dateString.substring(0, 10);
-};
+// const formatDate = (dateString: string | null | undefined): string => {
+//   if (!dateString) return '';
+//   if (dateString.includes('T')) {
+//     const date = new Date(dateString);
+//     if (!isNaN(date.getTime())) {
+//       const year = date.getUTCFullYear();
+//       const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+//       const day = String(date.getUTCDate()).padStart(2, '0');
+//       return `${year}-${month}-${day}`;
+//     }
+//   }
+//   return dateString.substring(0, 10);
+// };
 
 // Format helpers (following DashboardContent style)
 const capitalizeFirstLetter = (text: string): string => {
@@ -127,7 +128,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onClose, onUpd
     suffix_name: student?.suffix || '',
     nick_name: student?.nick_name || '',
     residential_address: student?.residential_address || student?.present_address || '',
-    birth_date: formatDate(student?.birth_date),
+    birth_date: student?.birth_date || '',
     gender: student?.gender || '',
     emergency_contact_person:
       student?.emergency_contact_person || student?.emergency_contact?.split(' - ')[0] || '',

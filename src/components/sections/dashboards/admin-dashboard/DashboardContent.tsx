@@ -212,7 +212,7 @@ const getStatusBadgeColor = (status: string) => {
 // Pattern: /idrs-school-ids/{school_code}/{student_id}_{surname}.jpg
 const getStudentPhotoUrl = (schoolCode: string, studentId: string, surname: string): string => {
   if (!schoolCode || !studentId || !surname) return '';
-  return `https://schoolmanagerph.com/idrs-school-ids/${schoolCode}/${studentId}_${surname}.jpg`;
+  return `https://schoolmanagerph.com/idrs-school-ids/${schoolCode}/${studentId}_${surname}.jpg?t=${Date.now()}`;
 };
 
 const DashboardContent = () => {
