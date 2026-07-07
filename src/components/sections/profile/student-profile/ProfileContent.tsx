@@ -51,7 +51,7 @@ interface StudentProfileData {
   id_print_status: string;
   created_at: string;
   name_to_appear_on_id?: string | null;
-  esc_voucher_recipient?: boolean;
+  esc_voucher_recipient?: string | null;
   esc_number?: string | null;
   parent_first_name?: string | null;
   parent_surname?: string | null;
@@ -287,7 +287,8 @@ const ProfileContent = () => {
                 parent_email: profileResponse.data.parent_email || '',
                 password: '',
                 name_to_appear_on_id: nameToAppear,
-                esc_voucher_recipient: profileResponse.data.esc_voucher_recipient || false,
+                esc_voucher_recipient:
+                  profileResponse.data.esc_voucher_recipient?.toLowerCase() === 'yes',
                 esc_number: profileResponse.data.esc_number || '',
               });
             }
@@ -534,7 +535,7 @@ const ProfileContent = () => {
         emergency_contact_person: editableData.emergency_contact_person,
         emergency_contact_number: editableData.emergency_contact_number,
         name_to_appear_on_id: editableData.name_to_appear_on_id,
-        esc_voucher_recipient: editableData.esc_voucher_recipient,
+        esc_voucher_recipient: editableData.esc_voucher_recipient ? 'Yes' : 'No',
         esc_number: editableData.esc_number || '',
       };
 
@@ -671,7 +672,22 @@ const ProfileContent = () => {
                 <Box sx={{ textAlign: 'left' }}>
                   <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: 'wrap' }}>
                     <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                      {profileData.full_name}
+                      {(() => {
+                        const firstName = profileData.first_name || '';
+                        const middleInitial = profileData.middle_initial || '';
+                        // Remove all periods from middle initial, then add one
+                        const cleanMiddle = middleInitial.replace(/\./g, '');
+                        const formattedMiddle = cleanMiddle ? cleanMiddle + '.' : '';
+                        const lastName = profileData.surname || '';
+                        const suffix = profileData.suffix_name || '';
+
+                        let fullName = firstName;
+                        if (formattedMiddle) fullName += ' ' + formattedMiddle;
+                        if (lastName) fullName += ' ' + lastName;
+                        if (suffix) fullName += ' ' + suffix;
+
+                        return fullName.trim();
+                      })()}
                     </Typography>
                   </Stack>
                   {profileData.student_id && (
@@ -1000,7 +1016,7 @@ const ProfileContent = () => {
               <FormControl fullWidth size="medium" disabled>
                 <InputLabel>DepEd ESC Grantee</InputLabel>
                 <Select
-                  value={editableData.esc_voucher_recipient ? 'Yes' : 'No'}
+                  value={profileData?.esc_voucher_recipient?.toLowerCase() === 'yes' ? 'Yes' : 'No'}
                   label="DepEd ESC Grantee"
                 >
                   <MenuItem value="Yes">Yes</MenuItem>
@@ -1266,7 +1282,7 @@ const ProfileContent = () => {
                   ESC Voucher Recipient
                 </Typography>
                 <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                  {editableData.esc_voucher_recipient ? 'Yes' : 'No'}
+                  {profileData?.esc_voucher_recipient?.toLowerCase() === 'yes' ? 'Yes' : 'No'}
                 </Typography>
               </Grid>
               {editableData.esc_voucher_recipient && editableData.esc_number && (

@@ -55,7 +55,7 @@ interface StudentInformation {
   nick_name?: string | null;
   birth_date?: string | null;
   gender?: string | null;
-  esc_voucher_recipient?: boolean;
+  esc_voucher_recipient?: string | null;
   esc_number?: string | null;
   id_info_approval_date?: string | null;
   class_details_approval_date?: string | null;
@@ -94,7 +94,7 @@ interface StudentRecord {
   nick_name?: string | null;
   birth_date?: string | null;
   gender?: string | null;
-  esc_voucher_recipient?: boolean;
+  esc_voucher_recipient?: string | null;
   esc_number?: string | null;
   parent_first_name?: string | null;
   parent_surname?: string | null;
@@ -138,7 +138,7 @@ const getStatusColor = (status: string) => {
 // Helper function to get student photo URL
 const getStudentPhotoUrl = (schoolCode: string, studentId: string, surname: string): string => {
   if (!schoolCode || !studentId || !surname) return '';
-  return `https://schoolmanagerph.com/idrs-school-ids/${schoolCode}/${studentId}_${surname}.jpg`;
+  return `https://schoolmanagerph.com/idrs-school-ids/${schoolCode}/${studentId}_${surname}.jpg?t=${Date.now()}`;
 };
 
 const ProfileContent = () => {
@@ -228,7 +228,7 @@ const ProfileContent = () => {
           nick_name: student.nick_name || null,
           birth_date: student.birth_date || null,
           gender: student.gender || null,
-          esc_voucher_recipient: student.esc_voucher_recipient || false,
+          esc_voucher_recipient: student.esc_voucher_recipient,
           esc_number: student.esc_number || null,
           parent_first_name: student.parent_first_name || null,
           parent_surname: student.parent_surname || null,
@@ -299,7 +299,7 @@ const ProfileContent = () => {
           nick_name: student.nick_name || null,
           birth_date: student.birth_date || null,
           gender: student.gender || null,
-          esc_voucher_recipient: student.esc_voucher_recipient || false,
+          esc_voucher_recipient: student.esc_voucher_recipient,
           esc_number: student.esc_number || null,
           parent_first_name: student.parent_first_name || null,
           parent_surname: student.parent_surname || null,

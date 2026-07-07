@@ -70,7 +70,7 @@ interface StudentInformation {
   gender?: string | null;
   id_info_approval_date?: string | null;
   class_details_approval_date?: string | null;
-  esc_voucher_recipient?: boolean;
+  esc_voucher_recipient?: string | null;
   esc_number?: string | null;
   id_print_date?: string | null;
 }
@@ -109,7 +109,7 @@ interface StudentRecord {
   gender?: string | null;
   id_info_approval_date?: string | null;
   class_details_approval_date?: string | null;
-  esc_voucher_recipient?: boolean;
+  esc_voucher_recipient?: string | null;
   esc_number?: string | null;
   id_print_date?: string | null;
 }
@@ -425,6 +425,7 @@ const DashboardContent = () => {
           nick_name: student.nick_name || null,
           birth_date: student.birth_date || null,
           gender: student.gender || null,
+          esc_voucher_recipient: student.esc_voucher_recipient,
           esc_number: student.esc_number || null,
           id_info_approval_date: student.id_info_approval_date || null,
           class_details_approval_date: student.class_details_approval_date || null,
@@ -521,6 +522,7 @@ const DashboardContent = () => {
           nick_name: student.nick_name || null,
           birth_date: student.birth_date || null,
           gender: student.gender || null,
+          esc_voucher_recipient: student.esc_voucher_recipient,
           esc_number: student.esc_number || null,
           id_info_approval_date: student.id_info_approval_date || null,
           class_details_approval_date: student.class_details_approval_date || null,
@@ -637,7 +639,7 @@ const DashboardContent = () => {
       'Emergency Contact Person': formatName(student.emergency_contact?.split(' - ')[0]),
       'Emergency Contact Number': student.emergency_contact?.split(' - ')[1] || '—',
       LRN: student.lrn || '—',
-      'ESC Grantee': student.esc_voucher_recipient ? 'Yes' : 'No',
+      'ESC Grantee': student.esc_voucher_recipient?.toLowerCase() === 'yes' ? 'Yes' : 'No',
       'ESC Number': student.esc_number || '—',
       'ID Info Status': formatStatus(student.id_info_status),
       'ID Info Approval Date': student.id_info_approval_date
@@ -964,7 +966,17 @@ const DashboardContent = () => {
                     {statistics.total}
                   </Typography>
                 </Box>
-                <Box sx={{ bgcolor: '#e0e7ff', p: 1, borderRadius: 2 }}>
+                <Box
+                  sx={{
+                    bgcolor: '#e0e7ff',
+                    width: 48,
+                    height: 48,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                  }}
+                >
                   <IconifyIcon icon="mdi:account-group" fontSize={24} color="#2563eb" />
                 </Box>
               </Stack>
@@ -997,7 +1009,17 @@ const DashboardContent = () => {
                     {statistics.approvedIdInfo}
                   </Typography>
                 </Box>
-                <Box sx={{ bgcolor: '#d1fae5', p: 1, borderRadius: 2 }}>
+                <Box
+                  sx={{
+                    bgcolor: '#d1fae5',
+                    width: 48,
+                    height: 48,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                  }}
+                >
                   <IconifyIcon icon="mdi:check-circle" fontSize={24} color="#10b981" />
                 </Box>
               </Stack>
@@ -1030,7 +1052,17 @@ const DashboardContent = () => {
                     {statistics.pendingIdInfo}
                   </Typography>
                 </Box>
-                <Box sx={{ bgcolor: '#fef3c7', p: 1, borderRadius: 2 }}>
+                <Box
+                  sx={{
+                    bgcolor: '#fef3c7',
+                    width: 48,
+                    height: 48,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                  }}
+                >
                   <IconifyIcon icon="mdi:clock-outline" fontSize={24} color="#f59e0b" />
                 </Box>
               </Stack>
@@ -1063,7 +1095,17 @@ const DashboardContent = () => {
                     {statistics.approvedClassDetails}
                   </Typography>
                 </Box>
-                <Box sx={{ bgcolor: '#d1fae5', p: 1, borderRadius: 2 }}>
+                <Box
+                  sx={{
+                    bgcolor: '#d1fae5',
+                    width: 48,
+                    height: 48,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                  }}
+                >
                   <IconifyIcon icon="mdi:check-circle" fontSize={24} color="#10b981" />
                 </Box>
               </Stack>
@@ -1099,7 +1141,17 @@ const DashboardContent = () => {
                     {statistics.pendingClassDetails}
                   </Typography>
                 </Box>
-                <Box sx={{ bgcolor: '#fef3c7', p: 1, borderRadius: 2 }}>
+                <Box
+                  sx={{
+                    bgcolor: '#fef3c7',
+                    width: 48,
+                    height: 48,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                  }}
+                >
                   <IconifyIcon icon="mdi:clock-outline" fontSize={24} color="#f59e0b" />
                 </Box>
               </Stack>
@@ -1132,7 +1184,17 @@ const DashboardContent = () => {
                     {statistics.printedIds}
                   </Typography>
                 </Box>
-                <Box sx={{ bgcolor: '#d1fae5', p: 1, borderRadius: 2 }}>
+                <Box
+                  sx={{
+                    bgcolor: '#d1fae5',
+                    width: 48,
+                    height: 48,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                  }}
+                >
                   <IconifyIcon icon="mdi:printer" fontSize={24} color="#10b981" />
                 </Box>
               </Stack>
@@ -1165,7 +1227,17 @@ const DashboardContent = () => {
                     {statistics.totalPendingIds}
                   </Typography>
                 </Box>
-                <Box sx={{ bgcolor: '#fef3c7', p: 1, borderRadius: 2 }}>
+                <Box
+                  sx={{
+                    bgcolor: '#fef3c7',
+                    width: 48,
+                    height: 48,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                  }}
+                >
                   <IconifyIcon icon="mdi:printer-alert" fontSize={24} color="#f59e0b" />
                 </Box>
               </Stack>
@@ -1198,7 +1270,17 @@ const DashboardContent = () => {
                     {statistics.totalReprintedIds}
                   </Typography>
                 </Box>
-                <Box sx={{ bgcolor: '#ede9fe', p: 1, borderRadius: 2 }}>
+                <Box
+                  sx={{
+                    bgcolor: '#ede9fe',
+                    width: 48,
+                    height: 48,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                  }}
+                >
                   <IconifyIcon icon="mdi:refresh" fontSize={24} color="#8b5cf6" />
                 </Box>
               </Stack>
@@ -1736,7 +1818,7 @@ const DashboardContent = () => {
                     DepEd ESC Grantee
                   </Typography>
                   <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
-                    {selectedStudent.esc_voucher_recipient ? 'Yes' : 'No'}
+                    {selectedStudent.esc_voucher_recipient?.toLowerCase() === 'yes' ? 'Yes' : 'No'}
                   </Typography>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>

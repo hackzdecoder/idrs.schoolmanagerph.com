@@ -6,7 +6,9 @@ import {
   Avatar,
   Box,
   Button,
+  Checkbox,
   Divider,
+  FormControlLabel,
   Link,
   Stack,
   TextField,
@@ -74,10 +76,10 @@ const AdminLoginForm: React.FC = () => {
   });
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Combined Terms & Privacy Modal State
+  // Terms & Privacy Modal State
   const [termsPrivacyModalOpen, setTermsPrivacyModalOpen] = useState(false);
-  const [termsPrivacyAccepted, setTermsPrivacyAccepted] = useState(false);
-  const [isCheckboxChecked, setIsCheckboxChecked] = useState(false);
+  const [isModalCheckboxChecked, setIsModalCheckboxChecked] = useState(false);
+  const [isLoginPageAgreed, setIsLoginPageAgreed] = useState(false);
 
   // ==========================================================================
   // Validation Helpers
@@ -138,8 +140,9 @@ const AdminLoginForm: React.FC = () => {
 
     if (!validateForm()) return;
 
-    if (!termsPrivacyAccepted) {
-      setSubmitError('You must accept the Terms and Privacy Policy before logging in.');
+    // Validate Terms agreement
+    if (!isLoginPageAgreed) {
+      setSubmitError('You must agree to the Terms and Privacy Policy before logging in.');
       return;
     }
 
@@ -175,27 +178,30 @@ const AdminLoginForm: React.FC = () => {
   // ==========================================================================
 
   const handleOpenTermsPrivacyModal = () => {
-    setIsCheckboxChecked(false);
+    setIsModalCheckboxChecked(false);
     setTermsPrivacyModalOpen(true);
   };
 
   const handleCloseTermsPrivacyModal = () => {
     setTermsPrivacyModalOpen(false);
-    setIsCheckboxChecked(false);
+    setIsModalCheckboxChecked(false);
   };
 
   const handleAcceptTermsPrivacy = () => {
-    console.log('Accept clicked, isCheckboxChecked:', isCheckboxChecked);
-    if (isCheckboxChecked) {
-      setTermsPrivacyAccepted(true);
+    if (isModalCheckboxChecked) {
+      setIsLoginPageAgreed(true);
       setTermsPrivacyModalOpen(false);
-      setIsCheckboxChecked(false);
+      setIsModalCheckboxChecked(false);
     }
   };
 
-  const handleCheckboxChange = (checked: boolean) => {
-    console.log('Checkbox changed in parent:', checked);
-    setIsCheckboxChecked(checked);
+  const handleModalCheckboxChange = (checked: boolean) => {
+    setIsModalCheckboxChecked(checked);
+  };
+
+  const handleLoginPageAgreeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setIsLoginPageAgreed(event.target.checked);
+    if (submitError) setSubmitError(null);
   };
 
   // ==========================================================================
@@ -255,6 +261,7 @@ const AdminLoginForm: React.FC = () => {
                 p: { xs: 2.5, sm: 4, md: 5 },
               }}
             >
+              {/* Header Section */}
               <Stack
                 direction="column"
                 spacing={1.5}
@@ -291,6 +298,7 @@ const AdminLoginForm: React.FC = () => {
 
               <Divider sx={{ mb: { xs: 2, sm: 3 } }} />
 
+              {/* Login Form */}
               <Box component="form" noValidate onSubmit={handleSubmit}>
                 <Stack spacing={2.5} direction="column">
                   {renderErrorAlert()}
@@ -325,37 +333,85 @@ const AdminLoginForm: React.FC = () => {
                     autoComplete="current-password"
                   />
 
+                  {/* Terms & Privacy Checkbox */}
+                  <FormControlLabel
+                    sx={{ justifyContent: 'center', width: '100%' }}
+                    control={
+                      <Checkbox
+                        checked={isLoginPageAgreed}
+                        onChange={handleLoginPageAgreeChange}
+                        color="primary"
+                      />
+                    }
+                    label={
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          flexWrap: 'wrap',
+                          justifyContent: 'center',
+                          gap: 0.5,
+                          fontSize: { xs: 11, sm: 12 },
+                        }}
+                      >
+                        I have read and I agree to the{' '}
+                        <Link
+                          component="button"
+                          type="button"
+                          variant="body2"
+                          onClick={handleOpenTermsPrivacyModal}
+                          sx={{
+                            cursor: 'pointer',
+                            textDecoration: 'none',
+                            fontWeight: 600,
+                            fontSize: 'inherit',
+                            lineHeight: 'inherit',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            '&:hover': {
+                              color: 'primary.main',
+                            },
+                          }}
+                        >
+                          TERMS
+                        </Link>
+                        {' and '}
+                        <Link
+                          component="button"
+                          type="button"
+                          variant="body2"
+                          onClick={handleOpenTermsPrivacyModal}
+                          sx={{
+                            cursor: 'pointer',
+                            textDecoration: 'none',
+                            fontWeight: 600,
+                            fontSize: 'inherit',
+                            lineHeight: 'inherit',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            '&:hover': {
+                              color: 'primary.main',
+                            },
+                          }}
+                        >
+                          PRIVACY POLICY
+                        </Link>
+                      </Typography>
+                    }
+                  />
+
                   <Button
                     fullWidth
                     type="submit"
                     size="large"
                     variant="contained"
                     color="primary"
-                    disabled={apiLoading || !termsPrivacyAccepted}
+                    disabled={apiLoading || !isLoginPageAgreed}
                     sx={{ py: { xs: 1.2, sm: 1.5 }, mt: { xs: 0.5, sm: 1 } }}
                   >
                     {apiLoading ? 'Logging in...' : 'Login'}
                   </Button>
-
-                  <Divider sx={{ my: 1 }}>
-                    <Stack direction="row" spacing={2} justifyContent="center">
-                      <Link
-                        component="button"
-                        type="button"
-                        variant="body2"
-                        onClick={handleOpenTermsPrivacyModal}
-                        sx={{
-                          cursor: 'pointer',
-                          fontSize: { xs: 11, sm: 12 },
-                          '&:hover': {
-                            color: 'primary.main',
-                          },
-                        }}
-                      >
-                        I have read and I agree to the <b>TERMS</b> and <b>PRIVACY POLICY</b>
-                      </Link>
-                    </Stack>
-                  </Divider>
                 </Stack>
               </Box>
             </Box>
@@ -363,7 +419,7 @@ const AdminLoginForm: React.FC = () => {
         </Grid>
       </Box>
 
-      {/* Dialog with memoized actions */}
+      {/* Terms & Privacy Modal */}
       <Dialog
         open={termsPrivacyModalOpen}
         onClose={handleCloseTermsPrivacyModal}
@@ -374,8 +430,8 @@ const AdminLoginForm: React.FC = () => {
         hideCloseButton={false}
         content={
           <TermsAndPrivacyContent
-            onCheckboxChange={handleCheckboxChange}
-            isChecked={isCheckboxChecked}
+            onCheckboxChange={handleModalCheckboxChange}
+            isChecked={isModalCheckboxChecked}
           />
         }
         actions={
@@ -387,7 +443,7 @@ const AdminLoginForm: React.FC = () => {
               onClick={handleAcceptTermsPrivacy}
               variant="contained"
               color="primary"
-              disabled={!isCheckboxChecked}
+              disabled={!isModalCheckboxChecked}
             >
               I Agree
             </Button>
